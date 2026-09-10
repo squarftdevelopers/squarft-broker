@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import { useDispatch, useSelector } from 'react-redux';
+import { shallowEqual, useDispatch, useSelector } from 'react-redux';
 import { addNotification, fetchNotifications } from '../store/slices/notificationSlice';
 import { resolveNotificationRoute } from '../utils/notificationRoutes';
 import { registerBrokerPushNotifications } from '../utils/pushNotifications';
@@ -12,7 +12,7 @@ export default function PushNotificationRegistrar() {
     const { isLoggedIn, token } = useSelector((state) => ({
         isLoggedIn: state.auth.isLoggedIn,
         token: state.auth.token,
-    }));
+    }), shallowEqual);
     const lastAttemptedTokenRef = useRef(null);
     const lastHandledResponseRef = useRef(null);
 

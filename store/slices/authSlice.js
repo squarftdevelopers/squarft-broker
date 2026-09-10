@@ -3,6 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.31.27:3001';
 
+const fetchWithTimeout = (url, options = {}, timeoutMs = 15000) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timeout));
+};
+
 const getKycStatus = (kyc) => String(
     kyc?.status || kyc?.kyc_status || kyc?.verification_status || kyc?.approval_status || ''
 ).toLowerCase();
@@ -32,6 +38,26 @@ export const loadToken = createAsyncThunk('auth/loadToken', async () => {
 });
 
 // Async Thunks
+export const startLogin = createAsyncThunk(
+    'auth/startLogin',
+    async ({ phone }, { rejectWithValue }) => {
+        try {
+            const response = await fetchWithTimeout(`${API_BASE_URL}/auth/send-otp`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, purpose: 'login', role: 'broker' }),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                if (response.status === 400 && data.message === 'No account found with this phone number') {
+                    return { needsRegistration: true };
+                }
+                return rejectWithValue(data.message);
+            }
+            return { ...data, needsRegistration: false };
+        } catch (err) { return rejectWithValue(err.name === 'AbortError' ? 'Request timed out. Please check your connection and try again.' : err.message); }
+    }
+);
+
 export const loginUser = createAsyncThunk(
     'auth/loginUser',
     async (credentials, { rejectWithValue }) => {
@@ -39,11 +65,7 @@ export const loginUser = createAsyncThunk(
             const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    phone: credentials.phone,
-                    password: credentials.password,
-                    role: 'broker'
-                }),
+            body: JSON.stringify({ verified_token: credentials.verified_token, role: 'broker' }),
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
@@ -61,9 +83,8 @@ export const registerUser = createAsyncThunk(
             const response = await fetch(`${API_BASE_URL}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    phone: userData.phone,
-                    password: userData.password,
+                    body: JSON.stringify({
+                    verified_token: userData.verified_token,
                     first_name: userData.first_name,
                     last_name: userData.last_name || '',
                     role: 'broker'
@@ -85,7 +106,7 @@ export const sendOtpApi = createAsyncThunk(
             const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone, purpose }),
+                body: JSON.stringify({ phone, purpose, role: 'broker' }),
             });
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
@@ -221,6 +242,21 @@ export const fetchUserProfile = createAsyncThunk(
     }
 );
 
+export const updateProfilePicture = createAsyncThunk(
+    'auth/updateProfilePicture',
+    async (asset, { getState, rejectWithValue }) => {
+        try {
+            const token = getState().auth.token;
+            const formData = new FormData();
+            formData.append('profilePicture', { uri: asset.uri, name: asset.fileName || 'profile.webp', type: asset.mimeType || 'image/jpeg' });
+            const response = await fetch(`${API_BASE_URL}/api/v1/profile/me/profile-picture`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` }, body: formData });
+            const data = await response.json();
+            if (!response.ok) return rejectWithValue(data.message);
+            return data.data;
+        } catch (err) { return rejectWithValue(err.message); }
+    }
+);
+
 // Change password
 export const changePassword = createAsyncThunk(
     'auth/changePassword',
@@ -289,7 +325,7 @@ const authSlice = createSlice({
         clearError: (state) => { state.error = null; },
         logout: (state) => {
             state.mobile = '';
-            state.password = '';
+        state.password = '';
             state.profileImage = null;
             state.isLoggedIn = false;
             state.isKycCompleted = false;
@@ -312,6 +348,13 @@ const authSlice = createSlice({
                 state.kycChecked = false;
                 state.kycCheckFailed = false;
             })
+            .addCase(startLogin.pending, (state) => { state.loading = true; state.error = null; })
+            .addCase(startLogin.fulfilled, (state, action) => {
+                state.loading = false;
+                state.otpFlow = action.payload.needsRegistration ? 'register' : 'login';
+                state.otpToken = action.payload.otp_token || null;
+            })
+            .addCase(startLogin.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
             .addCase(loginUser.fulfilled, (state, action) => {
                 state.loading = false;
                 state.isLoggedIn = true;
@@ -387,12 +430,20 @@ const authSlice = createSlice({
             .addCase(fetchUserProfile.pending, (state) => { state.loading = true; })
             .addCase(fetchUserProfile.fulfilled, (state, action) => {
                 state.loading = false;
-                state.user = action.payload.user;
+                state.user = action.payload.user || action.payload;
+                const profilePictureUrl = action.payload.user?.profilePictureUrl || action.payload.profilePictureUrl;
+                if (state.user && profilePictureUrl) state.user.avatar_url = profilePictureUrl;
             })
             .addCase(fetchUserProfile.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
             })
+            .addCase(updateProfilePicture.pending, (state) => { state.loading = true; state.error = null; })
+            .addCase(updateProfilePicture.fulfilled, (state, action) => {
+                state.loading = false;
+                if (state.user) state.user.avatar_url = action.payload?.profilePictureUrl || action.payload?.avatar_url || state.user.avatar_url;
+            })
+            .addCase(updateProfilePicture.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
             // Change Password
             .addCase(changePassword.pending, (state) => { state.loading = true; })
             .addCase(changePassword.fulfilled, (state) => { state.loading = false; })

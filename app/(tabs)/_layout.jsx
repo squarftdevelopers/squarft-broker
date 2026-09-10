@@ -2,7 +2,7 @@ import { Tabs, useRouter } from "expo-router";
 import { Platform, Pressable, View } from "react-native";
 import House from "lucide-react-native/icons/house";
 import Bookmark from "lucide-react-native/icons/bookmark";
-import Settings from "lucide-react-native/icons/settings";
+import UserRound from "lucide-react-native/icons/user-round";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch } from "react-redux";
@@ -16,7 +16,7 @@ const MUTED_TAB_COLOR = "#62676B";
 const tabIcons = {
     home: House,
     favourite: Bookmark,
-    settings: Settings,
+    settings: UserRound,
 };
 
 function TabIcon({ name, focused }) {
@@ -166,7 +166,7 @@ export default function TabsLayout() {
                     name="settings"
                     options={{
                         headerShown: false,
-                        tabBarLabel: "Settings",
+                        tabBarLabel: "Profile",
                         tabBarIcon: ({ focused }) => <TabIcon name="settings" focused={focused} />,
                     }}
                 />

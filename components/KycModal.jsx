@@ -10,6 +10,7 @@ const KycModal = () => {
     const dispatch = useDispatch();
     const pathname = usePathname();
     const bottomSheetModalRef = useRef(null);
+    const isPresentedRef = useRef(false);
     const { isKycCompleted, isLoggedIn, kycChecked, kycLoading, kycCheckFailed, token } = useSelector((state) => state.auth);
 
     const snapPoints = useMemo(() => ['75%'], []);
@@ -37,16 +38,22 @@ const KycModal = () => {
 
     useEffect(() => {
         if (shouldPromptKyc) {
-            bottomSheetModalRef.current?.present();
+            if (!isPresentedRef.current) {
+                isPresentedRef.current = true;
+                bottomSheetModalRef.current?.present();
+            }
         } else {
-            bottomSheetModalRef.current?.dismiss();
+            if (isPresentedRef.current) {
+                isPresentedRef.current = false;
+                bottomSheetModalRef.current?.dismiss();
+            }
         }
     }, [shouldPromptKyc]);
 
     const handleCompleteKyc = () => {
-        // Redirect to My Documents page to upload KYC documents
+        // Open the complete broker KYC form.
         bottomSheetModalRef.current?.dismiss();
-        router.push('/(screens)/my-documents');
+        router.push('/(screens)/kyc');
     };
 
     if (!shouldPromptKyc) {

@@ -7,32 +7,49 @@ import {
   StatusBar,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
-import { logout, fetchUserProfile } from "../../store/slices/authSlice";
-import { useEffect } from "react";
+import { logout, fetchUserProfile, fetchKyc, updateProfilePicture } from "../../store/slices/authSlice";
+import { useEffect, useState } from "react";
 
 const { width, height } = Dimensions.get("window");
 
 export default function Settings() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const { user, loading } = useSelector((state) => state.auth);
+  const { user, loading, kyc } = useSelector((state) => state.auth);
+  const [changingPhoto, setChangingPhoto] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUserProfile());
-  }, []);
+    dispatch(fetchKyc());
+  }, [dispatch]);
 
   const handleLogout = () => {
     dispatch(logout());
     router.replace("/");
   };
 
+  const handleChangePhoto = async () => {
+    if (changingPhoto || loading) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) { Alert.alert('Permission needed', 'Allow photo library access to change your profile image.'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+    if (result.canceled || !result.assets?.[0]) return;
+    setChangingPhoto(true);
+    try { await dispatch(updateProfilePicture(result.assets[0])).unwrap(); Alert.alert('Profile updated', 'Your profile image has been updated.'); }
+    catch (error) { Alert.alert('Upload failed', error || 'Unable to update your profile image.'); }
+    finally { setChangingPhoto(false); }
+  };
+
   const menuItems = [
     { id: 1, label: "Home", icon: "home-outline", type: "ionicons" },
     { id: 2, label: "My added", icon: "plus-box-outline", type: "material-community" },
+    { id: 6, label: "KYC Verification", icon: "card-account-details-outline", type: "material-community" },
     {
       id: 3,
       label: "Term and conditions",
@@ -46,7 +63,7 @@ export default function Settings() {
   const displayName = user?.full_name || user?.first_name || "User";
   const displayPhone = user?.phone || "N/A";
   const displayEmail = user?.email || "No email";
-  const avatarUrl = user?.avatar_url;
+  const avatarUrl = user?.avatar_url || kyc?.profile_photo_url;
 
   return (
     <View className="flex-1 bg-white">
@@ -63,7 +80,7 @@ export default function Settings() {
           className="flex-row items-center justify-center w-full px-6"
           style={{ paddingTop: Platform.OS === "ios" ? 60 : 45 }}
         >
-          <Text className="text-white text-[18px] font-lato-bold">Settings</Text>
+          <Text className="text-white text-[18px] font-lato-bold">Profile</Text>
         </View>
       </View>
 
@@ -124,15 +141,12 @@ export default function Settings() {
           ) : (
             <>
               <View className="flex-row items-center mb-8">
-                <View className="w-[55px] h-[55px] rounded-full overflow-hidden bg-[#F0F0FF] items-center justify-center">
+                <Pressable onPress={handleChangePhoto} className="w-[55px] h-[55px] rounded-full bg-[#F0F0FF] items-center justify-center">
                   {avatarUrl ? (
-                    <Image source={{ uri: avatarUrl }} className="w-full h-full" resizeMode="cover" />
-                  ) : (
-                    <Text className="text-[20px] font-manrope-bold text-[#4D45ED]">
-                      {displayName.charAt(0).toUpperCase()}
-                    </Text>
-                  )}
-                </View>
+                    <Image source={{ uri: avatarUrl }} className="w-full h-full rounded-full" resizeMode="cover" />
+                  ) : <Ionicons name="person-outline" size={24} color="#4D45ED" />}
+                  <View className="absolute -right-2 -bottom-1 bg-[#4D45ED] rounded-full p-1"><Ionicons name="camera" size={12} color="white" /></View>
+                </Pressable>
                 <View className="ml-6 flex-1">
                   <Text className="text-[16px] text-[#272727] font-manrope-extrabold tracking-tight">
                     {displayName.toUpperCase()}
@@ -195,6 +209,7 @@ export default function Settings() {
                 if (item.id === 3) router.push("/(screens)/terms-and-conditions");
                 if (item.id === 4) router.push("/(screens)/privacy-policy");
                 if (item.id === 5) router.push("/(screens)/contact-us");
+                if (item.id === 6) router.push("/(screens)/kyc");
               }}
             >
               <View className="w-8 items-center mr-4">
