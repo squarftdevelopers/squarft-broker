@@ -1,29 +1,29 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Dimensions } from 'react-native';
+import { Animated, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 
-const { width, height } = Dimensions.get('window');
+const ANIMATION_DURATION_MS = 3000;
+const FADE_DURATION_MS = 500;
 
 export default function AnimatedSplashScreen({ onFinish }) {
-    const fadeAnim = useRef(new Animated.Value(1)).current;
+    const opacity = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
-        // Auto-hide splash after 3 seconds with fade out
         const timer = setTimeout(() => {
-            Animated.timing(fadeAnim, {
+            Animated.timing(opacity, {
                 toValue: 0,
-                duration: 500,
+                duration: FADE_DURATION_MS,
                 useNativeDriver: true,
-            }).start(() => {
-                onFinish?.();
-            });
-        }, 3000);
+            }).start(() => onFinish?.());
+        }, ANIMATION_DURATION_MS);
 
         return () => clearTimeout(timer);
-    }, [fadeAnim, onFinish]);
+    }, [onFinish, opacity]);
 
     return (
-        <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+        <Animated.View
+            style={[styles.container, { opacity }]}
+        >
             <Image
                 source={require('../assets/images/splash-mobile.gif')}
                 style={styles.image}
@@ -36,13 +36,7 @@ export default function AnimatedSplashScreen({ onFinish }) {
 
 const styles = StyleSheet.create({
     container: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: width,
-        height: height,
+        ...StyleSheet.absoluteFillObject,
         backgroundColor: '#4A43EC',
         zIndex: 9999,
     },

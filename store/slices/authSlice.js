@@ -292,7 +292,8 @@ const authSlice = createSlice({
         otp: ['', '', '', '', '', ''], // Changed to 6 digits as per backend swagger
         otpFlow: 'register',
         rememberMe: false,
-        isLoggedIn:false,
+        isLoggedIn: false,
+        authChecked: false,
         isKycCompleted: false,
         token: null,
         user: null,
@@ -335,6 +336,7 @@ const authSlice = createSlice({
             state.kycLoading = false;
             state.kycChecked = false;
             state.kycCheckFailed = false;
+            state.authChecked = true;
             AsyncStorage.removeItem('auth_token');
         },
     },
@@ -391,12 +393,16 @@ const authSlice = createSlice({
             })
             // Load token
             .addCase(loadToken.fulfilled, (state, action) => {
+                state.authChecked = true;
                 if (action.payload) {
                     state.token = action.payload;
                     state.isLoggedIn = true;
                     state.kycChecked = false;
                     state.kycCheckFailed = false;
                 }
+            })
+            .addCase(loadToken.rejected, (state) => {
+                state.authChecked = true;
             })
             .addCase(uploadKyc.pending, (state) => { state.loading = true; state.error = null; })
             .addCase(uploadKyc.fulfilled, (state, action) => {
