@@ -64,7 +64,8 @@
           "color": "#4A43EC",
           "defaultChannel": "broker_app_default"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "pushNotifications": {

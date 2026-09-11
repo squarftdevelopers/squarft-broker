@@ -3,7 +3,6 @@ import { Stack } from "expo-router";
 export default function ScreensLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="property-type" />
       <Stack.Screen name="customer-requirement" />
       <Stack.Screen name="add-customer-requirement" />
       <Stack.Screen name="customer-details" />
@@ -14,6 +13,7 @@ export default function ScreensLayout() {
       <Stack.Screen name="add-bank" />
       <Stack.Screen name="location-picker" />
       <Stack.Screen name="nearby-projects" />
+      <Stack.Screen name="project-deal" />
       <Stack.Screen name="bank-success" options={{ gestureEnabled: false }} />
     </Stack>
   );

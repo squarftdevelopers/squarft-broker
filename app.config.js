@@ -32,6 +32,13 @@ if (!nativeGoogleMapsKey) {
 
 module.exports = {
   ...appJson.expo,
+  extra: {
+    ...appJson.expo.extra,
+    // The JavaScript location picker uses this to decide whether Google
+    // Places/Geocoding is available. The Android SDK receives the same key
+    // below during the native build.
+    googleMapsApiKey: nativeGoogleMapsKey || null,
+  },
   ios: {
     ...appJson.expo.ios,
     config: {

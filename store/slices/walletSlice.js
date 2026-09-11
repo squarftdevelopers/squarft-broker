@@ -71,7 +71,7 @@ export const fetchWalletOverview = createAsyncThunk(
     async (_, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
-            const response = await fetch(`${API_BASE_URL}/api/v1/broker/wallet/overview`, {
+            const response = await fetch(`${API_BASE_URL}/api/broker-sales/wallet`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
             const data = await response.json();
@@ -88,7 +88,7 @@ export const fetchTransactions = createAsyncThunk(
     async ({ page = 1, limit = 10 } = {}, { getState, rejectWithValue }) => {
         try {
             const token = getState().auth.token;
-            const response = await fetch(`${API_BASE_URL}/api/v1/broker/wallet/transactions?page=${page}&limit=${limit}`, {
+            const response = await fetch(`${API_BASE_URL}/api/broker-sales/wallet?page=${page}&limit=${limit}`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
             const data = await response.json();

@@ -99,6 +99,7 @@ export default function AddCustomerRequirement() {
   const requirementsList = useSelector((state) => state.requirements.list);
   const isContactVerified = useSelector((state) => state.requirements.isContactVerified);
   const customerOtpToken = useSelector((state) => state.requirements.customerOtpToken);
+  const customerVerifiedToken = useSelector((state) => state.requirements.customerVerifiedToken);
   const otpLoading = useSelector((state) => state.requirements.otpLoading);
   const otpError = useSelector((state) => state.requirements.otpError);
   const existingReq = isEdit ? requirementsList.find(r => r.id.toString() === id.toString()) : null;
@@ -318,6 +319,7 @@ export default function AddCustomerRequirement() {
     }
 
     const payload = {
+      verified_token: customerVerifiedToken,
       customer_name: form.name.trim(),
       contact_number: form.contact.trim(),
       requirement_type: reqType,

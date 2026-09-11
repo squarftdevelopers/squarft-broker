@@ -12,7 +12,7 @@ export default function ForgotPassword() {
 
     const handleSendOtp = () => {
         dispatch(setOtpFlow('forgot-password'));
-        router.push("/otp-verification");
+        router.push("/(auth)/otp-verification");
     };
 
     return (

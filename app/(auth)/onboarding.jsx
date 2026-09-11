@@ -11,7 +11,7 @@ export default function Onboarding() {
     const insets = useSafeAreaInsets();
 
     const handleNext = () => {
-        router.replace("/login");
+        router.replace("/(auth)/login");
     };
 
     return (
