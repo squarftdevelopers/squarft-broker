@@ -13,7 +13,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
-import { logout, fetchUserProfile, fetchKyc, updateProfilePicture } from "../../store/slices/authSlice";
+import { logout, deleteAccount, fetchUserProfile, fetchKyc, updateProfilePicture } from "../../store/slices/authSlice";
 import { useEffect, useState } from "react";
 
 const { width, height } = Dimensions.get("window");
@@ -23,6 +23,7 @@ export default function Settings() {
   const dispatch = useDispatch();
   const { user, loading, kyc } = useSelector((state) => state.auth);
   const [changingPhoto, setChangingPhoto] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUserProfile());
@@ -32,6 +33,31 @@ export default function Settings() {
   const handleLogout = () => {
     dispatch(logout());
     router.replace("/");
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you sure you want to delete your account? This action is permanent and cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingAccount(true);
+            try {
+              await dispatch(deleteAccount()).unwrap();
+              router.replace("/");
+            } catch (err) {
+              Alert.alert("Delete failed", err || "Unable to delete account. Please try again.");
+            } finally {
+              setDeletingAccount(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleChangePhoto = async () => {
@@ -58,6 +84,7 @@ export default function Settings() {
     },
     { id: 4, label: "Privacy Policy", icon: "shield-outline", type: "ionicons" },
     { id: 5, label: "Contact Us", icon: "call-outline", type: "ionicons" },
+    { id: 7, label: "FAQs", icon: "help-circle-outline", type: "ionicons" },
   ];
 
   const displayName = user?.full_name || user?.first_name || "User";
@@ -206,9 +233,10 @@ export default function Settings() {
               onPress={() => {
                 if (item.id === 1) router.push("/home");
                 if (item.id === 2) router.push("/favourite");
-                if (item.id === 3) router.push("/(screens)/terms-and-conditions");
-                if (item.id === 4) router.push("/(screens)/privacy-policy");
-                if (item.id === 5) router.push("/(screens)/contact-us");
+                if (item.id === 3) router.push({ pathname: "/(screens)/coming-soon", params: { title: "Terms & Conditions" } });
+                if (item.id === 4) router.push({ pathname: "/(screens)/coming-soon", params: { title: "Privacy Policy" } });
+                if (item.id === 5) router.push({ pathname: "/(screens)/coming-soon", params: { title: "Contact Us" } });
+                if (item.id === 7) router.push({ pathname: "/(screens)/coming-soon", params: { title: "FAQs" } });
                 if (item.id === 6) router.push("/(screens)/kyc");
               }}
             >
@@ -228,7 +256,8 @@ export default function Settings() {
 
         <Pressable
           onPress={handleLogout}
-          className="rounded-[24px] py-3 items-center flex-row justify-center border border-gray-200 mb-5"
+          disabled={deletingAccount}
+          className="rounded-[24px] py-3 items-center flex-row justify-center border border-gray-200 mb-3"
           style={{
             backgroundColor: 'rgba(255, 255, 255, 0.6)',
             shadowColor: "#000",
@@ -239,6 +268,28 @@ export default function Settings() {
         >
           <MaterialCommunityIcons name="logout" size={20} color="#FF3B30" style={{ marginRight: 10 }} />
           <Text className="text-[15px] text-[#4D45ED] font-lato-bold">Logout</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={handleDeleteAccount}
+          disabled={deletingAccount}
+          className="rounded-[24px] py-3 items-center flex-row justify-center border border-red-200 mb-8"
+          style={{
+            backgroundColor: '#FEF2F2',
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.04,
+            shadowRadius: 10,
+          }}
+        >
+          {deletingAccount ? (
+            <ActivityIndicator size="small" color="#DC2626" />
+          ) : (
+            <>
+              <Ionicons name="trash-outline" size={19} color="#DC2626" style={{ marginRight: 8 }} />
+              <Text className="text-[15px] text-[#DC2626] font-lato-bold">Delete Account</Text>
+            </>
+          )}
         </Pressable>
       </View>
     </View>

@@ -7,8 +7,85 @@ import { clearError, clearOtp, setMobile, startLogin } from "../../store/slices/
 const logo = require("../../assets/icons/app-icon.png");
 const COUNTRY_CODE = "+91";
 export default function Login() {
- const dispatch=useDispatch(); const {loading,error}=useSelector(s=>s.auth); const [localNumber,setLocalNumber]=useState("");
- useEffect(()=>{dispatch(clearError());dispatch(clearOtp())},[dispatch]);
- const handleSendOtp=async()=>{if(loading||localNumber.length!==10)return;dispatch(clearError());const phone=`${COUNTRY_CODE}${localNumber}`;dispatch(setMobile(phone));const result=await dispatch(startLogin({phone}));if(startLogin.fulfilled.match(result))router.push(result.payload.needsRegistration?"/(auth)/register":"/(auth)/otp-verification")};
- return <KeyboardAvoidingView className="flex-1" behavior={Platform.OS==="ios"?"padding":"height"}><TouchableWithoutFeedback onPress={Keyboard.dismiss}><View className="flex-1"><StatusBar style="light"/><View style={{paddingTop:64,paddingBottom:40,paddingHorizontal:24,backgroundColor:"#4A43EC"}}><View style={{width:60,height:60,overflow:"hidden",marginBottom:1}}><Image source={logo} style={{width:110,height:110,margin:-26}} resizeMode="contain"/></View><Text className="text-white text-[26px] font-manrope-bold mb-5">Login</Text><Text className="text-white/80 text-[14px]">Enter your phone number to continue</Text></View><ScrollView className="flex-1 bg-white" contentContainerStyle={{padding:24,paddingTop:32}} keyboardShouldPersistTaps="handled"><Text className="text-gray-500 text-[13px] mb-1.5">Phone Number</Text><View className="border border-gray-200 rounded-xl px-4 py-2 mb-5 flex-row items-center"><Text className="text-[15px] text-black font-lato-bold mr-2">{COUNTRY_CODE}</Text><View className="w-[1px] h-5 bg-gray-200 mr-2"/><TextInput value={localNumber} onChangeText={v=>setLocalNumber(v.replace(/[^0-9]/g,"").slice(0,10))} placeholder="Phone Number" placeholderTextColor="#aaa" keyboardType="phone-pad" maxLength={10} className="flex-1 text-[15px] text-black" autoFocus/></View>{error&&<Text className="text-red-500 text-[13px] mb-4 text-center">{error}</Text>}<TouchableOpacity onPress={handleSendOtp} disabled={loading||localNumber.length!==10} className="bg-[#4A43EC] rounded-2xl py-4 items-center mb-8" style={{opacity:localNumber.length!==10?.5:1}}>{loading?<ActivityIndicator color="#fff"/>:<Text className="text-white text-[16px] font-lato-bold">Continue</Text>}</TouchableOpacity></ScrollView></View></TouchableWithoutFeedback></KeyboardAvoidingView>;
+    const dispatch = useDispatch();
+    const { loading, error } = useSelector((s) => s.auth);
+    const [localNumber, setLocalNumber] = useState("");
+
+    useEffect(() => {
+        dispatch(clearError());
+        dispatch(clearOtp());
+    }, [dispatch]);
+
+    const handleSendOtp = async () => {
+        if (loading || localNumber.length !== 10) return;
+        dispatch(clearError());
+        const phone = `${COUNTRY_CODE}${localNumber}`;
+        dispatch(setMobile(phone));
+        const result = await dispatch(startLogin({ phone }));
+        if (startLogin.fulfilled.match(result)) {
+            router.push(result.payload.needsRegistration ? "/(auth)/register" : "/(auth)/otp-verification");
+        }
+    };
+
+    return (
+        <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : "height"}>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View className="flex-1">
+                    <StatusBar style="light" />
+                    <View style={{ paddingTop: 64, paddingBottom: 40, paddingHorizontal: 24, backgroundColor: "#4A43EC" }}>
+                        <View style={{ width: 60, height: 60, overflow: "hidden", marginBottom: 1 }}>
+                            <Image source={logo} style={{ width: 110, height: 110, margin: -26 }} resizeMode="contain" />
+                        </View>
+                        <Text className="text-white text-[26px] font-manrope-bold mb-5">Login</Text>
+                        <Text className="text-white/80 text-[14px]">Enter your phone number to continue</Text>
+                    </View>
+                    <ScrollView className="flex-1 bg-white" contentContainerStyle={{ padding: 24, paddingTop: 32 }} keyboardShouldPersistTaps="handled">
+                        <Text className="text-gray-500 text-[13px] mb-1.5">Phone Number</Text>
+                        <View className="border border-gray-200 rounded-xl px-4 py-2 mb-5 flex-row items-center">
+                            <Text className="text-[15px] text-black font-lato-bold mr-2">{COUNTRY_CODE}</Text>
+                            <View className="w-[1px] h-5 bg-gray-200 mr-2" />
+                            <TextInput
+                                value={localNumber}
+                                onChangeText={(v) => setLocalNumber(v.replace(/[^0-9]/g, "").slice(0, 10))}
+                                placeholder="Phone Number"
+                                placeholderTextColor="#aaa"
+                                keyboardType="phone-pad"
+                                maxLength={10}
+                                className="flex-1 text-[15px] text-black"
+                                autoFocus
+                            />
+                        </View>
+                        {error && <Text className="text-red-500 text-[13px] mb-4 text-center">{error}</Text>}
+                        <TouchableOpacity
+                            onPress={handleSendOtp}
+                            disabled={loading || localNumber.length !== 10}
+                            className="bg-[#4A43EC] rounded-2xl py-4 items-center mb-8"
+                            style={{ opacity: localNumber.length !== 10 ? 0.5 : 1 }}
+                        >
+                            {loading ? <ActivityIndicator color="#fff" /> : <Text className="text-white text-[16px] font-lato-bold">Continue</Text>}
+                        </TouchableOpacity>
+
+                        <View className="items-center justify-center pt-2 pb-4">
+                            <Text className="text-center text-xs text-gray-400 font-lato leading-5">
+                                By continuing, you agree to our{"\n"}
+                                <Text
+                                    onPress={() => router.push({ pathname: "/(screens)/coming-soon", params: { title: "Terms & Conditions" } })}
+                                    className="font-bold text-[#4A43EC]"
+                                >
+                                    Terms & Conditions
+                                </Text>
+                                {" "}and{" "}
+                                <Text
+                                    onPress={() => router.push({ pathname: "/(screens)/coming-soon", params: { title: "Privacy Policy" } })}
+                                    className="font-bold text-[#4A43EC]"
+                                >
+                                    Privacy Policy
+                                </Text>
+                            </Text>
+                        </View>
+                    </ScrollView>
+                </View>
+            </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+    );
 }

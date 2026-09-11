@@ -15,6 +15,11 @@ export default function ScreensLayout() {
       <Stack.Screen name="nearby-projects" />
       <Stack.Screen name="project-deal" />
       <Stack.Screen name="bank-success" options={{ gestureEnabled: false }} />
+      <Stack.Screen name="terms-and-conditions" />
+      <Stack.Screen name="privacy-policy" />
+      <Stack.Screen name="contact-us" />
+      <Stack.Screen name="faqs" />
+      <Stack.Screen name="coming-soon" />
     </Stack>
   );
 }

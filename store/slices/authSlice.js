@@ -280,6 +280,29 @@ export const changePassword = createAsyncThunk(
     }
 );
 
+// Delete account
+export const deleteAccount = createAsyncThunk(
+    'auth/deleteAccount',
+    async (_, { getState, dispatch, rejectWithValue }) => {
+        try {
+            const token = getState().auth.token;
+            const response = await fetch(`${API_BASE_URL}/api/v1/profile/me`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) return rejectWithValue(data.message || 'Failed to delete account');
+            dispatch(logout());
+            return data;
+        } catch (err) {
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
 const authSlice = createSlice({
     name: 'auth',
     initialState: {
