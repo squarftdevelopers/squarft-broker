@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
     View, Text, Pressable, StatusBar, Platform,
     ScrollView, Image, StyleSheet, Alert, ActivityIndicator,
+    RefreshControl,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -21,6 +22,16 @@ export default function MyDocuments() {
     const router = useRouter();
     const dispatch = useDispatch();
     const { loading, kyc } = useSelector(state => state.auth);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        try {
+            await dispatch(fetchKyc());
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     const [files, setFiles] = useState({
         aadharFront: null,
@@ -150,6 +161,15 @@ export default function MyDocuments() {
             <ScrollView
                 contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 40 }}
                 showsVerticalScrollIndicator={false}
+                alwaysBounceVertical={true}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={["#4A43EC"]}
+                        tintColor="#4A43EC"
+                    />
+                }
             >
                 {DOCS.map(({ key, label, isCamera }) => {
                     const file = files[key];

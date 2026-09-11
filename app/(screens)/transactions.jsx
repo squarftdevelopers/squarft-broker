@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StatusBar, TextInput, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, StatusBar, TextInput, Alert, RefreshControl } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -14,6 +14,16 @@ const TransactionsScreen = () => {
     const { transactions } = useSelector((state) => state.wallet);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [searchText, setSearchText] = useState("");
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        try {
+            await dispatch(fetchTransactions());
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     React.useEffect(() => {
         dispatch(fetchTransactions());
@@ -90,7 +100,19 @@ const TransactionsScreen = () => {
             {/* Transactions List */}
             <View className="flex-1 px-6 pt-6">
 
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    alwaysBounceVertical={true}
+                    contentContainerStyle={{ paddingBottom: 40 }}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={["#4A43EC"]}
+                            tintColor="#4A43EC"
+                        />
+                    }
+                >
                     {filteredTransactions.map((item, index) => (
                         <Pressable
                             key={item.id}

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
-import { View, Text, Pressable, ScrollView, StatusBar, TextInput, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, StatusBar, TextInput, Alert, RefreshControl } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -12,9 +12,23 @@ const WalletScreen = () => {
     const { withdraw } = useLocalSearchParams();
     const dispatch = useDispatch();
     const { balance, bankAccounts, transactions } = useSelector((state) => state.wallet);
+    const [refreshing, setRefreshing] = useState(false);
     
     // States for view toggle and withdraw form
     const [isWithdrawMode, setIsWithdrawMode] = useState(false);
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        try {
+            await Promise.allSettled([
+                dispatch(fetchWalletOverview()),
+                dispatch(fetchBankAccounts()),
+                dispatch(fetchTransactions({ limit: 5 })),
+            ]);
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     useEffect(() => {
         dispatch(fetchWalletOverview());
@@ -178,7 +192,19 @@ const WalletScreen = () => {
                         </Pressable>
                     </View>
 
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 40 }}
+                        alwaysBounceVertical={true}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                colors={["#4A43EC"]}
+                                tintColor="#4A43EC"
+                            />
+                        }
+                    >
                         {transactions.map((item) => (
                             <Pressable
                                 key={item.id}
@@ -200,7 +226,19 @@ const WalletScreen = () => {
                     </ScrollView>
                 </View>
             ) : (
-                <ScrollView className="flex-1 px-6 pt-8" showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    className="flex-1 px-6 pt-8"
+                    showsVerticalScrollIndicator={false}
+                    alwaysBounceVertical={true}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={["#4A43EC"]}
+                            tintColor="#4A43EC"
+                        />
+                    }
+                >
                     <Text className="text-[14px] font-manrope-bold text-[#272727] mb-3">Enter amount</Text>
                     <View className="flex-row items-center border border-gray-100 rounded-xl px-4 py-3.5 mb-8">
                         <Text className="text-gray-400 text-[15px] font-manrope-medium mr-2">₹</Text>

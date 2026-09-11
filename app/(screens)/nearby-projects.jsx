@@ -190,8 +190,9 @@ export default function NearbyProjects() {
                     keyExtractor={(item, index) => String(item.id || item.slug || index)}
                     renderItem={renderProject}
                     showsVerticalScrollIndicator={false}
+                    alwaysBounceVertical={true}
                     refreshControl={
-                        <RefreshControl refreshing={nearbyProjectsLoading} onRefresh={loadNearbyProjects} tintColor="#4A43EC" />
+                        <RefreshControl refreshing={nearbyProjectsLoading} onRefresh={loadNearbyProjects} colors={["#4A43EC"]} tintColor="#4A43EC" />
                     }
                     contentContainerStyle={{ paddingBottom: insets.bottom + 28, flexGrow: 1 }}
                     ListEmptyComponent={

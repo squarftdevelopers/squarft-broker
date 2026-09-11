@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, Pressable, ScrollView, StatusBar, TextInput, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, Pressable, ScrollView, StatusBar, TextInput, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSelector, useDispatch } from 'react-redux';
@@ -14,6 +14,16 @@ const CommissionHistoryScreen = () => {
     const [filterModalVisible, setFilterModalVisible] = useState(false);
     const [statusFilter, setStatusFilter] = useState('all');
     const [dateFilter, setDateFilter] = useState('all');
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        try {
+            await dispatch(fetchCommissionHistory({ page: 1, limit: 100 }));
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     useEffect(() => {
         console.log('🔍 [commission-history] Fetching commission history...');
@@ -178,6 +188,15 @@ const CommissionHistoryScreen = () => {
                 <ScrollView
                     className="flex-1 px-6 pt-4"
                     showsVerticalScrollIndicator={false}
+                    alwaysBounceVertical={true}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={["#4A43EC"]}
+                            tintColor="#4A43EC"
+                        />
+                    }
                     contentContainerStyle={{ paddingBottom: 40 }}
                 >
                     {filtered.map((item) => {

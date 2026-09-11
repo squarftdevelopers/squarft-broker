@@ -242,7 +242,7 @@ export default function KycScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={{flex: 1}}><ScrollView contentContainerStyle={[styles.statusContainer, {flexGrow: 1}]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />} alwaysBounceVertical>
+      <SafeAreaView style={{flex: 1}}><ScrollView contentContainerStyle={[styles.statusContainer, {flexGrow: 1}]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#4A43EC"]} tintColor="#4A43EC" />} alwaysBounceVertical>
         <Text style={styles.statusTitle}>Unable to Load KYC</Text>
         <Text style={styles.statusMessage}>{loadError}</Text>
         <Pressable style={[styles.primaryButton, { backgroundColor: '#4A43EC' }]} onPress={loadKycStatus}>
@@ -266,7 +266,7 @@ export default function KycScreen() {
 
   if (showStatusOnly) {
     return (
-      <SafeAreaView style={{flex: 1}}><ScrollView contentContainerStyle={[styles.statusContainer, {flexGrow: 1}]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />} alwaysBounceVertical>
+      <SafeAreaView style={{flex: 1}}><ScrollView contentContainerStyle={[styles.statusContainer, {flexGrow: 1}]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#4A43EC"]} tintColor="#4A43EC" />} alwaysBounceVertical>
         <StatusBar barStyle="dark-content" />
         <View style={[styles.statusIcon, { backgroundColor: meta.bg }]}>
           <MaterialCommunityIcons name={meta.icon} size={54} color={meta.color} />
@@ -304,7 +304,7 @@ export default function KycScreen() {
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
-        <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />} alwaysBounceVertical
+        <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#4A43EC"]} tintColor="#4A43EC" />} alwaysBounceVertical
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"

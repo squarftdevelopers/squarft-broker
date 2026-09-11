@@ -2,6 +2,8 @@ import {
   Image,
   Text,
   View,
+  ScrollView,
+  RefreshControl,
   Pressable,
   Platform,
   StatusBar,
@@ -24,11 +26,24 @@ export default function Settings() {
   const { user, loading, kyc } = useSelector((state) => state.auth);
   const [changingPhoto, setChangingPhoto] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUserProfile());
     dispatch(fetchKyc());
   }, [dispatch]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.allSettled([
+        dispatch(fetchUserProfile()),
+        dispatch(fetchKyc()),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleLogout = () => {
     dispatch(logout());
@@ -148,8 +163,18 @@ export default function Settings() {
         }}
       />
 
-      <View
-        style={{ paddingTop: 120, paddingHorizontal: 20, paddingBottom: 100 }}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        alwaysBounceVertical={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#4A43EC"]}
+            tintColor="#4A43EC"
+          />
+        }
+        contentContainerStyle={{ paddingTop: 120, paddingHorizontal: 20, paddingBottom: 100 }}
       >
         <View
           className="bg-white rounded-[22px] p-4 mb-12"
@@ -291,7 +316,7 @@ export default function Settings() {
             </>
           )}
         </Pressable>
-      </View>
+      </ScrollView>
     </View>
   );
 }

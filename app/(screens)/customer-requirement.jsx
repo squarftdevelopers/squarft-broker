@@ -108,8 +108,9 @@ export default function CustomerRequirement() {
           flexGrow: filteredRequirements.length === 0 ? 1 : 0
         }}
         showsVerticalScrollIndicator={false}
+        alwaysBounceVertical={true}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={["#4A43EC"]} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={["#4A43EC"]} tintColor="#4A43EC" />
         }
       >
         {loading && !isRefreshing ? (

@@ -1334,6 +1334,7 @@ export default function Home() {
             className="flex-1 bg-white"
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 120 }}
+            alwaysBounceVertical={true}
             refreshControl={
                 <RefreshControl
                     refreshing={refreshing}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, StatusBar, Text, TextInput, TouchableOpacity, View, RefreshControl } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -75,8 +75,19 @@ export default function Discount() {
     const [filterModalVisible, setFilterModalVisible] = useState(false);
     const [statusFilter, setStatusFilter] = useState('all');
     const [dateFilter, setDateFilter] = useState('all');
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        try {
+            await dispatch(fetchCommissionHistory({ page: 1, limit: 100 }));
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     useEffect(() => {
+        console.log('🔍 [discount.jsx] Fetching commission history...');
         dispatch(fetchCommissionHistory({ page: 1, limit: 100 }));
     }, [dispatch]);
 
@@ -220,6 +231,15 @@ export default function Discount() {
                     renderItem={({ item }) => <CommissionCard item={item} />}
                     contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140, paddingTop: 10, flexGrow: 1 }}
                     showsVerticalScrollIndicator={false}
+                    alwaysBounceVertical={true}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={["#4A43EC"]}
+                            tintColor="#4A43EC"
+                        />
+                    }
                     ListEmptyComponent={
                         <View className="flex-1 items-center justify-center px-10">
                             <MaterialCommunityIcons name="cash-remove" size={56} color="#D1D5DB" />

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   Pressable,
   StatusBar,
   Linking,
+  RefreshControl,
 } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -23,6 +24,17 @@ export default function CustomerDetails() {
   const { id } = useLocalSearchParams();
   const requirement = useSelector((state) => state.requirements.currentRequirement);
   const loading = useSelector((state) => state.requirements.loading);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    if (!id) return;
+    setRefreshing(true);
+    try {
+      await dispatch(fetchRequirementById(id));
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -111,7 +123,19 @@ export default function CustomerDetails() {
         </Text>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        alwaysBounceVertical={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#4A43EC"]}
+            tintColor="#4A43EC"
+          />
+        }
+      >
         <View className="px-4 py-4">
           {/* Main Profile Card */}
           <LinearGradient

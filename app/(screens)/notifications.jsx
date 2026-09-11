@@ -1,8 +1,8 @@
-import { View, Text, Pressable, StatusBar, Platform, ScrollView, Image, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, StatusBar, Platform, ScrollView, Image, ActivityIndicator, RefreshControl } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, Stack } from "expo-router";
 import { useSelector, useDispatch } from "react-redux";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { markAllAsWatched, markAllReadApi, markAsWatched, fetchNotifications } from "../../store/slices/notificationSlice";
 import { resolveNotificationRoute } from "../../utils/notificationRoutes";
 
@@ -11,6 +11,16 @@ export default function Notifications() {
   const dispatch = useDispatch();
   const notifications = useSelector((state) => state.notifications?.list || []);
   const loading = useSelector((state) => state.notifications?.loading || false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await dispatch(fetchNotifications());
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     dispatch(fetchNotifications());
@@ -95,6 +105,15 @@ export default function Notifications() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
+          alwaysBounceVertical={true}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#4A43EC"]}
+              tintColor="#4A43EC"
+            />
+          }
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 100 }}
         >
           {notifications.map((item) => (
