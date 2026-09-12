@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "squarFT Broker",
+    "name": "SquarFT Broker",
     "slug": "squarft-broker",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,8 +8,10 @@
     "scheme": "squarftbroker",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "owner": "squarft",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.squarft.broker",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Allow squarFT Broker to use your location for selecting property and owner addresses."
       }
@@ -20,7 +22,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.kartik2611mishra.squarftbroker",
+      "package": "com.squarft.broker",
       "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
@@ -90,6 +92,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/349e4cf6-ce87-4216-98a1-a9d26a278880"
     }
   }
 }
