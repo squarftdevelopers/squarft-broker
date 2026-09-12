@@ -258,10 +258,10 @@ export default function Settings() {
               onPress={() => {
                 if (item.id === 1) router.push("/home");
                 if (item.id === 2) router.push("/favourite");
-                if (item.id === 3) router.push({ pathname: "/(screens)/coming-soon", params: { title: "Terms & Conditions" } });
-                if (item.id === 4) router.push({ pathname: "/(screens)/coming-soon", params: { title: "Privacy Policy" } });
-                if (item.id === 5) router.push({ pathname: "/(screens)/coming-soon", params: { title: "Contact Us" } });
-                if (item.id === 7) router.push({ pathname: "/(screens)/coming-soon", params: { title: "FAQs" } });
+                if (item.id === 3) router.push("/(screens)/terms-and-conditions");
+                if (item.id === 4) router.push("/(screens)/privacy-policy");
+                if (item.id === 5) router.push("/(screens)/contact-us");
+                if (item.id === 7) router.push("/(screens)/faqs");
                 if (item.id === 6) router.push("/(screens)/kyc");
               }}
             >
