@@ -39,7 +39,16 @@ const ensureAndroidNotificationChannel = async () => {
         lightColor: '#4A43EC',
     });
 
-    console.log('[PushNotifications] Android notification channel ensured', {
+    if (BROKER_ANDROID_CHANNEL_ID !== 'broker-updates') {
+        await Notifications.setNotificationChannelAsync('broker-updates', {
+            name: 'Broker Updates',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#4A43EC',
+        });
+    }
+
+    console.log('[PushNotifications] Android notification channels ensured', {
         channelId: BROKER_ANDROID_CHANNEL_ID,
     });
 
