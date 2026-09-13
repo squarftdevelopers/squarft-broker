@@ -1,10 +1,12 @@
 import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 import { Platform, useColorScheme } from "react-native";
 import * as NavigationBar from "expo-navigation-bar";
 import { Provider, useDispatch } from 'react-redux';
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import "../global.css";
 import { store } from '../store/store';
 import { loadToken } from '../store/slices/authSlice';
@@ -81,20 +83,23 @@ export default function AuthLayout() {
     return (
         <Provider store={store}>
             <GestureHandlerRootView style={{ flex: 1 }}>
-                <BottomSheetModalProvider>
-                    <AppInit>
-                        <PushNotificationRegistrar />
-                        <Stack>
-                            <Stack.Screen name="index" options={{ headerShown: false }} />
-                            <Stack.Screen name="(auth)" options={{ headerShown: false, animation: "none" }} />
-                            <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
-                            <Stack.Screen name="(screens)" options={{ headerShown: false }} />
-                        </Stack>
-                        {showAnimatedSplash && (
-                            <AnimatedSplashScreen onFinish={() => setShowAnimatedSplash(false)} />
-                        )}
-                    </AppInit>
-                </BottomSheetModalProvider>
+                <SafeAreaProvider>
+                    <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
+                    <BottomSheetModalProvider>
+                        <AppInit>
+                            <PushNotificationRegistrar />
+                            <Stack>
+                                <Stack.Screen name="index" options={{ headerShown: false }} />
+                                <Stack.Screen name="(auth)" options={{ headerShown: false, animation: "none" }} />
+                                <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
+                                <Stack.Screen name="(screens)" options={{ headerShown: false }} />
+                            </Stack>
+                            {showAnimatedSplash && (
+                                <AnimatedSplashScreen onFinish={() => setShowAnimatedSplash(false)} />
+                            )}
+                        </AppInit>
+                    </BottomSheetModalProvider>
+                </SafeAreaProvider>
             </GestureHandlerRootView>
         </Provider>
     );

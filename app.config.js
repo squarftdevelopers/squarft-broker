@@ -38,6 +38,9 @@ module.exports = {
     // Places/Geocoding is available. The Android SDK receives the same key
     // below during the native build.
     googleMapsApiKey: nativeGoogleMapsKey || null,
+    "eas": {
+      "projectId": "11360005-bb4e-452d-9196-4731e5578fc4"
+    },
   },
   ios: {
     ...appJson.expo.ios,
@@ -57,7 +60,7 @@ module.exports = {
   },
   updates: {
     ...appJson.expo.updates,
-    url: "https://u.expo.dev/349e4cf6-ce87-4216-98a1-a9d26a278880",
+    url: "https://u.expo.dev/11360005-bb4e-452d-9196-4731e5578fc4",
   },
   runtimeVersion: {
     policy: "appVersion",
