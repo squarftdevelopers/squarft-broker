@@ -71,10 +71,12 @@ export default function AuthLayout() {
 
     useEffect(() => {
         if (fontsLoaded) {
-            // Hide native splash immediately when fonts are loaded
-            SplashScreen.hideAsync().catch((err) => {
+            const timer = setTimeout(() => {
+                SplashScreen.hideAsync().catch((err) => {
                 console.warn("SplashScreen.hideAsync error:", err);
-            });
+                });
+            }, 180);
+            return () => clearTimeout(timer);
         }
     }, [fontsLoaded]);
 
