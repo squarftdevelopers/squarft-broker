@@ -26,15 +26,26 @@ const isKycSubmittedOrApproved = (kyc) => {
 
     const status = getKycStatus(kyc);
     if (['rejected', 'declined', 'failed'].includes(status)) return false;
-    if (['pending', 'submitted', 'approved', 'verified', 'in_review', 'under_review'].includes(status)) return true;
-
-    return hasUploadedKycDocuments(kyc);
+    return ['approved', 'verified'].includes(status);
 };
 
 // Load token from storage on app start
-export const loadToken = createAsyncThunk('auth/loadToken', async () => {
-    const token = await AsyncStorage.getItem('auth_token');
-    return token;
+export const loadToken = createAsyncThunk('auth/loadToken', async (_, { dispatch }) => {
+    const [token, userJson] = await Promise.all([
+        AsyncStorage.getItem('auth_token'),
+        AsyncStorage.getItem('auth_user'),
+    ]);
+    let user = null;
+    if (userJson) {
+        try {
+            user = JSON.parse(userJson);
+        } catch (e) {}
+    }
+    if (token) {
+        dispatch(fetchUserProfile());
+        dispatch(fetchKyc());
+    }
+    return { token, user };
 });
 
 // Async Thunks
@@ -210,7 +221,8 @@ export const fetchKyc = createAsyncThunk(
     'auth/fetchKyc',
     async (_, { getState, rejectWithValue }) => {
         try {
-            const token = getState().auth.token;
+            const token = getState().auth.token || await AsyncStorage.getItem('auth_token');
+            if (!token) return rejectWithValue('No auth token found');
             const response = await fetch(`${API_BASE_URL}/api/v1/broker/kyc`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -229,7 +241,8 @@ export const fetchUserProfile = createAsyncThunk(
     'auth/fetchProfile',
     async (_, { getState, rejectWithValue }) => {
         try {
-            const token = getState().auth.token;
+            const token = getState().auth.token || await AsyncStorage.getItem('auth_token');
+            if (!token) return rejectWithValue('No auth token found');
             const response = await fetch(`${API_BASE_URL}/api/v1/profile/me`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -361,6 +374,7 @@ const authSlice = createSlice({
             state.kycCheckFailed = false;
             state.authChecked = true;
             AsyncStorage.removeItem('auth_token');
+            AsyncStorage.removeItem('auth_user');
         },
     },
     extraReducers: (builder) => {
@@ -387,6 +401,9 @@ const authSlice = createSlice({
                 state.token = action.payload.token;
                 state.user = action.payload.user;
                 AsyncStorage.setItem('auth_token', action.payload.token);
+                if (action.payload.user) {
+                    AsyncStorage.setItem('auth_user', JSON.stringify(action.payload.user));
+                }
             })
             .addCase(loginUser.rejected, (state, action) => {
                 state.loading = false;
@@ -399,8 +416,17 @@ const authSlice = createSlice({
             })
             .addCase(registerUser.fulfilled, (state, action) => {
                 state.loading = false;
-                // Registration successful, usually wait for login or auto-login
+                state.isLoggedIn = true;
+                state.isKycCompleted = false;
+                state.kyc = null;
+                state.kycChecked = false;
+                state.kycCheckFailed = false;
+                state.token = action.payload.token;
                 state.user = action.payload.user;
+                AsyncStorage.setItem('auth_token', action.payload.token);
+                if (action.payload.user) {
+                    AsyncStorage.setItem('auth_user', JSON.stringify(action.payload.user));
+                }
             })
             .addCase(registerUser.rejected, (state, action) => {
                 state.loading = false;
@@ -417,9 +443,14 @@ const authSlice = createSlice({
             // Load token
             .addCase(loadToken.fulfilled, (state, action) => {
                 state.authChecked = true;
-                if (action.payload) {
-                    state.token = action.payload;
+                const token = action.payload?.token || (typeof action.payload === 'string' ? action.payload : null);
+                const user = action.payload?.user || null;
+                if (token) {
+                    state.token = token;
                     state.isLoggedIn = true;
+                    if (user) {
+                        state.user = user;
+                    }
                     state.kycChecked = false;
                     state.kycCheckFailed = false;
                 }
@@ -432,7 +463,7 @@ const authSlice = createSlice({
                 const uploadedKyc = action.payload?.data || action.payload;
                 state.loading = false;
                 state.kyc = uploadedKyc || state.kyc;
-                state.isKycCompleted = true;
+                state.isKycCompleted = false;
                 state.kycChecked = true;
             })
             .addCase(uploadKyc.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
@@ -448,6 +479,10 @@ const authSlice = createSlice({
                 state.kycCheckFailed = false;
                 state.kyc = action.payload;
                 state.isKycCompleted = isKycSubmittedOrApproved(action.payload);
+                if (state.user && !state.user.avatar_url && action.payload?.profile_photo_url) {
+                    state.user.avatar_url = action.payload.profile_photo_url;
+                    AsyncStorage.setItem('auth_user', JSON.stringify(state.user));
+                }
             })
             .addCase(fetchKyc.rejected, (state, action) => {
                 state.kycLoading = false;
@@ -459,9 +494,15 @@ const authSlice = createSlice({
             .addCase(fetchUserProfile.pending, (state) => { state.loading = true; })
             .addCase(fetchUserProfile.fulfilled, (state, action) => {
                 state.loading = false;
-                state.user = action.payload.user || action.payload;
-                const profilePictureUrl = action.payload.user?.profilePictureUrl || action.payload.profilePictureUrl;
-                if (state.user && profilePictureUrl) state.user.avatar_url = profilePictureUrl;
+                const fetchedUser = action.payload?.user || action.payload;
+                const profilePictureUrl = fetchedUser?.profilePictureUrl || fetchedUser?.avatar_url || state.kyc?.profile_photo_url;
+                state.user = {
+                    ...fetchedUser,
+                    avatar_url: profilePictureUrl || fetchedUser?.avatar_url || state.user?.avatar_url || null,
+                };
+                if (state.user) {
+                    AsyncStorage.setItem('auth_user', JSON.stringify(state.user));
+                }
             })
             .addCase(fetchUserProfile.rejected, (state, action) => {
                 state.loading = false;

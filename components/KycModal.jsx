@@ -1,21 +1,22 @@
-import React, { useRef, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useRef, useEffect, useMemo, useCallback, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, Image, Platform, ActivityIndicator } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { router, usePathname } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { fetchKyc } from '../store/slices/authSlice';
-import KycIllustration from './KycIllustration';
 
 const KycModal = () => {
     const dispatch = useDispatch();
     const pathname = usePathname();
     const bottomSheetModalRef = useRef(null);
-    const isPresentedRef = useRef(false);
-    const { isKycCompleted, isLoggedIn, kycChecked, kycLoading, kycCheckFailed, token } = useSelector((state) => state.auth);
+    const { isKycCompleted, kycChecked, kycLoading, token, kyc } = useSelector((state) => state.auth);
+    const kycStatus = String(kyc?.verification_status || '').toLowerCase();
+    const isSubmitted = ['pending', 'submitted', 'under_review', 'in_review'].includes(kycStatus);
 
-    const snapPoints = useMemo(() => ['75%'], []);
+    const snapPoints = useMemo(() => ['92%'], []);
     const shouldHideForRoute = pathname.includes('kyc') || pathname.includes('my-documents');
-    const shouldPromptKyc = isLoggedIn && kycChecked && !kycCheckFailed && !isKycCompleted && !shouldHideForRoute;
+    const isApproved = ['approved', 'verified'].includes(kycStatus) || isKycCompleted;
+    const shouldPromptKyc = Boolean(token) && kycChecked && !isApproved && !shouldHideForRoute;
 
     const renderBackdrop = useCallback(
         (props) => (
@@ -31,34 +32,41 @@ const KycModal = () => {
     );
 
     useEffect(() => {
-        if (isLoggedIn && token && !kycChecked && !kycLoading) {
+        if (token && !kycChecked && !kycLoading) {
             dispatch(fetchKyc());
         }
-    }, [dispatch, isLoggedIn, kycChecked, kycLoading, token]);
+    }, [dispatch, kycChecked, kycLoading, token]);
 
     useEffect(() => {
         if (shouldPromptKyc) {
-            if (!isPresentedRef.current) {
-                isPresentedRef.current = true;
+            const timer = setTimeout(() => {
                 bottomSheetModalRef.current?.present();
-            }
+            }, 250);
+            return () => clearTimeout(timer);
         } else {
-            if (isPresentedRef.current) {
-                isPresentedRef.current = false;
-                bottomSheetModalRef.current?.dismiss();
-            }
+            bottomSheetModalRef.current?.dismiss();
         }
-    }, [shouldPromptKyc]);
+    }, [shouldPromptKyc, pathname, isApproved, kycStatus]);
 
-    const handleCompleteKyc = () => {
-        // Open the complete broker KYC form.
+    const [refreshing, setRefreshing] = useState(false);
+    const isRefreshing = isSubmitted && (refreshing || kycLoading);
+
+    const handleKycAction = async () => {
+        if (isSubmitted) {
+            if (refreshing || kycLoading) return;
+            setRefreshing(true);
+            try {
+                await dispatch(fetchKyc()).unwrap();
+            } catch (err) {
+                console.log('[KycModal] fetchKyc error:', err);
+            } finally {
+                setRefreshing(false);
+            }
+            return;
+        }
         bottomSheetModalRef.current?.dismiss();
         router.push('/(screens)/kyc');
     };
-
-    if (!shouldPromptKyc) {
-        return null;
-    }
 
     return (
         <BottomSheetModal
@@ -68,35 +76,53 @@ const KycModal = () => {
             backdropComponent={renderBackdrop}
             enablePanDownToClose={false}
             enableDismissOnClose={false}
-            handleComponent={() => (
-                <View style={styles.handleContainer}>
-                    <View style={styles.handle} />
-                </View>
-            )}
+            handleComponent={null}
             backgroundStyle={styles.bottomSheetBackground}
         >
             <BottomSheetView style={styles.contentContainer}>
-                {/* Illustration */}
-                <View style={styles.illustrationContainer}>
-                    <KycIllustration width={350} height={300} />
+                {/* Top Visual Section with Blue Header and Illustration */}
+                <View style={styles.visualContainer}>
+                    {/* Blue header background covering top part */}
+                    <View style={styles.blueHeaderBg} />
+
+                    {/* Centered white handle pill inside the blue header */}
+                    <View style={styles.handleBar} />
+
+                    {/* KYC Illustration Image */}
+                    <Image
+                        source={require('../assets/images/kyc-sheet.png')}
+                        style={styles.illustrationImage}
+                        resizeMode="contain"
+                    />
                 </View>
 
                 {/* Text Content */}
                 <View style={styles.textContainer}>
-                    <Text style={styles.title}>Please Complete Your KYC</Text>
+                    <Text style={styles.title}>
+                        {isSubmitted ? 'KYC Submitted' : 'Please Complete Your KYC'}
+                    </Text>
                     <Text style={styles.description}>
-                        Complete your KYC to start uploading your{'\n'}property and reach potential buyers.
+                        {isSubmitted
+                            ? 'Your KYC is submitted for admin review. Access will unlock after approval.'
+                            : 'Complete your KYC to start uploading your property and reach potential buyers.'}
                     </Text>
                 </View>
 
-                {/* Button */}
-                <View style={styles.buttonContainer}>
-                    <Pressable 
-                        style={styles.completeButton}
-                        onPress={handleCompleteKyc}
+                {/* Bottom Button Container with top border */}
+                <View style={styles.bottomBar}>
+                    <Pressable
+                        style={[styles.completeButton, isRefreshing && styles.disabledButton]}
+                        onPress={handleKycAction}
+                        disabled={isRefreshing}
                         android_ripple={{ color: 'rgba(255, 255, 255, 0.3)' }}
                     >
-                        <Text style={styles.completeButtonText}>Complete KYC</Text>
+                        {isRefreshing ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                            <Text style={styles.completeButtonText}>
+                                {isSubmitted ? 'Refresh Status' : 'Complete KYC'}
+                            </Text>
+                        )}
                     </Pressable>
                 </View>
             </BottomSheetView>
@@ -105,74 +131,106 @@ const KycModal = () => {
 };
 
 const styles = StyleSheet.create({
-    handleContainer: {
-        alignItems: 'center',
-        paddingVertical: 12,
-    },
-    handle: {
-        width: 40,
-        height: 4,
-        backgroundColor: '#D1D5DB',
-        borderRadius: 2,
-    },
     bottomSheetBackground: {
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        backgroundColor: 'white',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        backgroundColor: '#FFFFFF',
+        overflow: 'hidden',
     },
     contentContainer: {
         flex: 1,
-        paddingHorizontal: 24,
-        paddingBottom: 32,
-        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        overflow: 'hidden',
     },
-    illustrationContainer: {
+    visualContainer: {
         width: '100%',
-        height: '50%',
-        justifyContent: 'center',
+        height: 370,
+        position: 'relative',
         alignItems: 'center',
-        marginBottom: 24,
+        justifyContent: 'flex-start',
+    },
+    blueHeaderBg: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 270,
+        backgroundColor: '#4A43EC',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+    },
+    handleBar: {
+        width: 48,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: 'rgba(255, 255, 255, 0.75)',
+        position: 'absolute',
+        top: 14,
+        zIndex: 10,
+        alignSelf: 'center',
+    },
+    illustrationImage: {
+        width: '80%',
+        height: 275,
+        marginTop: 65,
+        alignSelf: 'center',
     },
     textContainer: {
         alignItems: 'center',
-        marginBottom: 32,
+        paddingHorizontal: 30,
+        paddingTop: 16,
+        paddingBottom: 20,
+        flex: 1,
+        justifyContent: 'center',
     },
     title: {
-        fontSize: 22,
+        fontSize: 24,
         fontWeight: '700',
         color: '#111827',
         marginBottom: 12,
         textAlign: 'center',
         fontFamily: 'Lato-Bold',
+        letterSpacing: -0.3,
     },
     description: {
-        fontSize: 14,
+        fontSize: 14.5,
         color: '#9CA3AF',
         textAlign: 'center',
-        lineHeight: 20,
+        lineHeight: 22,
         fontFamily: 'Lato-Regular',
+        paddingHorizontal: 8,
     },
-    buttonContainer: {
+    bottomBar: {
         width: '100%',
-        marginTop: 'auto',
+        borderTopWidth: 1,
+        borderTopColor: '#F3F4F6',
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: Platform.OS === 'ios' ? 38 : 28,
+        backgroundColor: '#FFFFFF',
     },
     completeButton: {
-        backgroundColor: '#4F46E5',
+        backgroundColor: '#4A43EC',
         paddingVertical: 16,
-        borderRadius: 16,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#4F46E5',
+        shadowColor: '#4A43EC',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.25,
         shadowRadius: 8,
         elevation: 4,
     },
     completeButtonText: {
-        color: 'white',
+        color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '700',
         fontFamily: 'Lato-Bold',
+    },
+    disabledButton: {
+        opacity: 0.85,
     },
 });
 

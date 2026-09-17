@@ -3,7 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { Redirect, router } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { clearError, clearOtp, loginUser, registerUser, sendOtpApi, setOtpDigit, verifyOtpApi } from "../../store/slices/authSlice";
+import { clearError, clearOtp, loginUser, registerUser, sendOtpApi, setOtpDigit, verifyOtpApi, fetchUserProfile, fetchKyc } from "../../store/slices/authSlice";
 
 const logo = require("../../assets/icons/app-icon.png");
 
@@ -44,6 +44,8 @@ export default function OtpVerification() {
             }
             if ((loginUser.fulfilled.match(result) || registerUser.fulfilled.match(result)) && result.payload.token) {
                 dispatch(clearOtp());
+                dispatch(fetchUserProfile());
+                dispatch(fetchKyc());
                 router.replace("/(tabs)/home");
             }
         }

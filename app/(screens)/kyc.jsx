@@ -18,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Redirect, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchKyc, uploadKyc, logout, setKycCompleted } from '../../store/slices/authSlice';
+import { fetchKyc, uploadKyc, logout, setKycCompleted, fetchUserProfile } from '../../store/slices/authSlice';
 
 
 const isApprovedStatus = (status) => status === 'verified';
@@ -83,7 +83,7 @@ export default function KycScreen() {
   const dispatch = useDispatch();
   const { token, kyc } = useSelector((state) => state.auth);
   const submittingRef = useRef(false);
-  const [loadError, setLoadError] = useState('');
+  const [fetchWarnMsg, setFetchWarnMsg] = useState('');
   const [remoteKyc, setRemoteKyc] = useState(kyc || null);
   const [status, setStatus] = useState(remoteKyc?.verification_status || 'missing');
   const [rejectionReason, setRejectionReason] = useState('');
@@ -98,22 +98,33 @@ export default function KycScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const loadKycStatus = useCallback(async (preserveDraft = false) => {
-    if (!token) { setFetchingKyc(false); return; }
     if (!preserveDraft) setFetchingKyc(true);
-    setLoadError('');
+    setFetchWarnMsg('');
     try {
-      const data = await dispatch(fetchKyc()).unwrap().catch((error) => { if (error === 'KYC not found') return null; throw new Error(error); });
-      const normalized = data || { verification_status: 'missing' };
+      // unwrap: fulfilled=data|null, rejected=throws
+      const rawData = token
+        ? await dispatch(fetchKyc()).unwrap().catch((err) =>
+            // 'KYC not found' or 'No auth token found' → treat as no-KYC-yet
+            null
+          )
+        : null;
+      const normalized = rawData || { verification_status: 'missing' };
       setRemoteKyc(normalized);
       if (!preserveDraft) {
         setAadharNumber(normalized.aadhar_number || '');
         setPanNumber(normalized.pan_number || '');
       }
-      setStatus(normalized.verification_status === 'pending' ? 'under_review' : (normalized.verification_status || 'missing'));
+      setStatus(
+        normalized.verification_status === 'pending'
+          ? 'under_review'
+          : normalized.verification_status || 'missing'
+      );
       setRejectionReason(normalized.rejection_reason || '');
       dispatch(setKycCompleted(normalized.verification_status === 'verified'));
     } catch (error) {
-      setLoadError(error.message || 'Unable to load KYC. Please try again.');
+      // Non-fatal: fall back to upload form and show a small warning
+      setStatus('missing');
+      setFetchWarnMsg('Could not load existing KYC info. You can still upload your documents.');
     } finally {
       setFetchingKyc(false);
     }
@@ -211,7 +222,9 @@ export default function KycScreen() {
       setAadharFront(null);
       setAadharBack(null);
       setPanCard(null);
-      Alert.alert('KYC Submitted', 'Your KYC has been submitted for admin approval.');
+      await dispatch(fetchKyc());
+      dispatch(fetchUserProfile());
+      router.replace('/(tabs)/home');
     } catch (error) {
       await loadKycStatus();
       Alert.alert('KYC Failed', error.message || 'Unable to submit KYC. Please try again.');
@@ -240,21 +253,6 @@ export default function KycScreen() {
 
   if (!token) return <Redirect href="/(auth)/login" />;
 
-  if (loadError) {
-    return (
-      <SafeAreaView style={{flex: 1}}><ScrollView contentContainerStyle={[styles.statusContainer, {flexGrow: 1}]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#4A43EC"]} tintColor="#4A43EC" />} alwaysBounceVertical>
-        <Text style={styles.statusTitle}>Unable to Load KYC</Text>
-        <Text style={styles.statusMessage}>{loadError}</Text>
-        <Pressable style={[styles.primaryButton, { backgroundColor: '#4A43EC' }]} onPress={loadKycStatus}>
-          <Text style={styles.primaryButtonText}>Retry</Text>
-        </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={handleLogout}>
-          <Text style={styles.secondaryButtonText}>Log Out</Text>
-        </Pressable>
-      </ScrollView></SafeAreaView>
-    );
-  }
-
   if (fetchingKyc) {
     return (
       <View style={styles.loaderContainer}>
@@ -264,7 +262,7 @@ export default function KycScreen() {
     );
   }
 
-  if (showStatusOnly) {
+  if (false && showStatusOnly) {
     return (
       <SafeAreaView style={{flex: 1}}><ScrollView contentContainerStyle={[styles.statusContainer, {flexGrow: 1}]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#4A43EC"]} tintColor="#4A43EC" />} alwaysBounceVertical>
         <StatusBar barStyle="dark-content" />

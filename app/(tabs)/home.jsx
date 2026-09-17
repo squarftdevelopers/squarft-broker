@@ -19,6 +19,7 @@ import { visitService } from "../../services/visitService";
 import { dealService } from "../../services/dealService";
 import { inventoryService } from "../../services/inventoryService";
 import { fetchBrokerStats } from "../../store/slices/brokerSlice";
+import { fetchUserProfile, fetchKyc } from "../../store/slices/authSlice";
 
 // Skeleton shimmer box
 const SkeletonBox = ({ width, height, borderRadius = 8, style }) => {
@@ -55,6 +56,7 @@ export default function Home() {
     const inventoryByProject = useSelector((state) => state.inventory.byProject);
     const inventoryLoading = useSelector((state) => state.inventory.loading);
     const authUser = useSelector((state) => state.auth.user);
+    const kyc = useSelector((state) => state.auth.kyc);
     const isKycCompleted = useSelector((state) => state.auth.isKycCompleted);
     const brokerStats = useSelector((state) => state.broker?.stats || {});
     const [activeTab, setActiveTab] = useState("Overview");
@@ -165,6 +167,13 @@ export default function Home() {
             setOverviewLoading(false);
         }
     }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            dispatch(fetchUserProfile());
+            dispatch(fetchKyc());
+        }, [dispatch])
+    );
 
     // fetchProjectsList replaced by fetchBackendProjects which sets projectsList directly
     useEffect(() => { fetchOverview(selectedProjectId); }, [selectedProjectId, fetchOverview]);
@@ -560,6 +569,8 @@ export default function Home() {
         useCallback(() => {
             fetchBackendProjects();
             dispatch(fetchBrokerStats());
+            dispatch(fetchUserProfile());
+            dispatch(fetchKyc());
         }, [dispatch, fetchBackendProjects])
     );
 
@@ -637,20 +648,29 @@ export default function Home() {
 
     // Pull to refresh handler
     const onRefresh = useCallback(async () => {
-        const backendProjectId = getBackendProjectId();
-        if (!backendProjectId) return;
         setRefreshing(true);
-        if (activeTab === 'Overview') {
-            await fetchOverview(backendProjectId);
-        } else if (activeTab === 'Inventory') {
-            await fetchInventoryData(backendProjectId, true); // force = true to bypass cache
-        } else if (activeTab === 'Visits') {
-            await fetchVisitData(backendProjectId);
-        } else if (activeTab === 'Deals') {
-            await fetchDealsData(backendProjectId);
+        try {
+            await Promise.allSettled([
+                dispatch(fetchUserProfile()),
+                dispatch(fetchKyc()),
+                dispatch(fetchBrokerStats()),
+            ]);
+            const backendProjectId = getBackendProjectId();
+            if (backendProjectId) {
+                if (activeTab === 'Overview') {
+                    await fetchOverview(backendProjectId);
+                } else if (activeTab === 'Inventory') {
+                    await fetchInventoryData(backendProjectId, true); // force = true to bypass cache
+                } else if (activeTab === 'Visits') {
+                    await fetchVisitData(backendProjectId);
+                } else if (activeTab === 'Deals') {
+                    await fetchDealsData(backendProjectId);
+                }
+            }
+        } finally {
+            setRefreshing(false);
         }
-        setRefreshing(false);
-    }, [getBackendProjectId, fetchOverview, fetchInventoryData, fetchVisitData, fetchDealsData, activeTab]);
+    }, [getBackendProjectId, fetchOverview, fetchInventoryData, fetchVisitData, fetchDealsData, activeTab, dispatch]);
 
     // Fetch deals data
     const fetchDealsData = useCallback(async (projectId) => {
@@ -1130,10 +1150,27 @@ export default function Home() {
         return `₹${Number(amount).toLocaleString("en-IN")}`;
     };
 
-    const authUserName = [authUser?.first_name, authUser?.last_name].filter(Boolean).join(' ');
-    const displayUserName = apiUserProfile?.name || authUserName || "Welcome";
+    const identityUser = authUser?.user || authUser || {};
+    const authUserName = (
+        identityUser.name
+        || identityUser.full_name
+        || identityUser.fullName
+        || [identityUser.first_name || identityUser.firstName, identityUser.last_name || identityUser.lastName].filter(Boolean).join(' ')
+        || ""
+    ).trim();
+    const apiUserName = apiUserProfile?.name && apiUserProfile.name.trim().toLowerCase() !== 'welcome'
+        ? apiUserProfile.name.trim()
+        : '';
+    const displayUserName = authUserName || apiUserName || "Welcome";
     const displayUserDate = apiUserProfile?.date_display || new Date().toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-    const displayUserAvatar = apiUserProfile?.avatar_url || authUser?.avatar_url || null;
+    const displayUserAvatar =
+        identityUser.avatar_url
+        || identityUser.profilePictureUrl
+        || identityUser.profile_picture_url
+        || identityUser.profile_photo_url
+        || kyc?.profile_photo_url
+        || apiUserProfile?.avatar_url
+        || null;
     const displayUserVerified = apiUserProfile?.is_verified ?? isKycCompleted;
 
     const brokerSummary = [

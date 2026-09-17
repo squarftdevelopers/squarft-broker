@@ -27,6 +27,7 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import PushNotificationRegistrar from "../components/PushNotificationRegistrar";
 import AnimatedSplashScreen from "../components/AnimatedSplashScreen";
+import KycModal from "../components/KycModal";
 import {
     Roboto_400Regular,
     Roboto_500Medium,
@@ -96,6 +97,7 @@ export default function AuthLayout() {
                                 <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
                                 <Stack.Screen name="(screens)" options={{ headerShown: false }} />
                             </Stack>
+                            <KycModal />
                             {showAnimatedSplash && (
                                 <AnimatedSplashScreen onFinish={() => setShowAnimatedSplash(false)} />
                             )}
