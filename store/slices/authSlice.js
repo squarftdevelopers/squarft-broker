@@ -29,6 +29,8 @@ const isKycSubmittedOrApproved = (kyc) => {
     return ['approved', 'verified'].includes(status);
 };
 
+const isHttpUrl = (url) => typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'));
+
 // Load token from storage on app start
 export const loadToken = createAsyncThunk('auth/loadToken', async (_, { dispatch }) => {
     const [token, userJson] = await Promise.all([
@@ -39,6 +41,9 @@ export const loadToken = createAsyncThunk('auth/loadToken', async (_, { dispatch
     if (userJson) {
         try {
             user = JSON.parse(userJson);
+            // Signed S3 URLs stored from a previous session are expired — strip them.
+            // A fresh URL will be fetched via fetchUserProfile/fetchKyc below.
+            if (user) delete user.profilePictureUrl;
         } catch (e) {}
     }
     if (token) {
@@ -402,7 +407,9 @@ const authSlice = createSlice({
                 state.user = action.payload.user;
                 AsyncStorage.setItem('auth_token', action.payload.token);
                 if (action.payload.user) {
-                    AsyncStorage.setItem('auth_user', JSON.stringify(action.payload.user));
+                    // Never persist signed S3 URLs — they expire in 1 hour.
+                    const { profilePictureUrl: _pic, ...userToStore } = action.payload.user;
+                    AsyncStorage.setItem('auth_user', JSON.stringify(userToStore));
                 }
             })
             .addCase(loginUser.rejected, (state, action) => {
@@ -425,7 +432,8 @@ const authSlice = createSlice({
                 state.user = action.payload.user;
                 AsyncStorage.setItem('auth_token', action.payload.token);
                 if (action.payload.user) {
-                    AsyncStorage.setItem('auth_user', JSON.stringify(action.payload.user));
+                    const { profilePictureUrl: _pic, ...userToStore } = action.payload.user;
+                    AsyncStorage.setItem('auth_user', JSON.stringify(userToStore));
                 }
             })
             .addCase(registerUser.rejected, (state, action) => {
@@ -479,9 +487,11 @@ const authSlice = createSlice({
                 state.kycCheckFailed = false;
                 state.kyc = action.payload;
                 state.isKycCompleted = isKycSubmittedOrApproved(action.payload);
-                if (state.user && !state.user.avatar_url && action.payload?.profile_photo_url) {
-                    state.user.avatar_url = action.payload.profile_photo_url;
-                    AsyncStorage.setItem('auth_user', JSON.stringify(state.user));
+                // Update in-memory signed URL only — never persist to AsyncStorage (expires in 1h).
+                const signedPhoto = action.payload?.profile_photo_url;
+                if (state.user && isHttpUrl(signedPhoto) && !isHttpUrl(state.user.profilePictureUrl)) {
+                    state.user.profilePictureUrl = signedPhoto;
+                    // Leave avatar_url as the raw S3 key so the backend can re-sign it next time.
                 }
             })
             .addCase(fetchKyc.rejected, (state, action) => {
@@ -495,13 +505,24 @@ const authSlice = createSlice({
             .addCase(fetchUserProfile.fulfilled, (state, action) => {
                 state.loading = false;
                 const fetchedUser = action.payload?.user || action.payload;
-                const profilePictureUrl = fetchedUser?.profilePictureUrl || fetchedUser?.avatar_url || state.kyc?.profile_photo_url;
+
+                // Pick the best available signed URL for in-memory display (never stored).
+                const freshSignedUrl = [
+                    fetchedUser?.profilePictureUrl,
+                    state.kyc?.profile_photo_url,
+                ].find(isHttpUrl) || null;
+
                 state.user = {
                     ...fetchedUser,
-                    avatar_url: profilePictureUrl || fetchedUser?.avatar_url || state.user?.avatar_url || null,
+                    // In-memory signed URL — valid for this session only.
+                    profilePictureUrl: freshSignedUrl,
+                    // Keep the raw S3 key as avatar_url so future fetches can re-sign it.
+                    avatar_url: fetchedUser?.avatar_url || state.user?.avatar_url || null,
                 };
                 if (state.user) {
-                    AsyncStorage.setItem('auth_user', JSON.stringify(state.user));
+                    // Persist only non-expiring data (strip the signed URL).
+                    const { profilePictureUrl: _pic, ...userToStore } = state.user;
+                    AsyncStorage.setItem('auth_user', JSON.stringify(userToStore));
                 }
             })
             .addCase(fetchUserProfile.rejected, (state, action) => {
@@ -511,7 +532,18 @@ const authSlice = createSlice({
             .addCase(updateProfilePicture.pending, (state) => { state.loading = true; state.error = null; })
             .addCase(updateProfilePicture.fulfilled, (state, action) => {
                 state.loading = false;
-                if (state.user) state.user.avatar_url = action.payload?.profilePictureUrl || action.payload?.avatar_url || state.user.avatar_url;
+                const rawKey = action.payload?.avatar_url && !isHttpUrl(action.payload.avatar_url)
+                    ? action.payload.avatar_url
+                    : state.user?.avatar_url || null;
+                const freshSigned = [action.payload?.profilePictureUrl, action.payload?.avatar_url].find(isHttpUrl) || null;
+                if (state.user) {
+                    // In-memory: show fresh signed URL immediately.
+                    state.user.profilePictureUrl = freshSigned;
+                    // Persist only the raw S3 key so next session can re-sign it.
+                    state.user.avatar_url = rawKey;
+                    const { profilePictureUrl: _pic, ...userToStore } = state.user;
+                    AsyncStorage.setItem('auth_user', JSON.stringify(userToStore));
+                }
             })
             .addCase(updateProfilePicture.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
             // Change Password

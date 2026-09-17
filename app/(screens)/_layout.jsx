@@ -19,6 +19,7 @@ export default function ScreensLayout() {
       <Stack.Screen name="privacy-policy" />
       <Stack.Screen name="contact-us" />
       <Stack.Screen name="faqs" />
+      <Stack.Screen name="property-type" />
       <Stack.Screen name="coming-soon" />
     </Stack>
   );

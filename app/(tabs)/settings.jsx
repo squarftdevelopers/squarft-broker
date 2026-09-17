@@ -27,6 +27,7 @@ export default function Settings() {
   const [changingPhoto, setChangingPhoto] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUserProfile());
@@ -102,10 +103,20 @@ export default function Settings() {
     { id: 7, label: "FAQs", icon: "help-circle-outline", type: "ionicons" },
   ];
 
-  const displayName = user?.full_name || user?.first_name || "User";
+  const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.full_name || user?.name || "User";
   const displayPhone = user?.phone || "N/A";
   const displayEmail = user?.email || "No email";
-  const avatarUrl = user?.avatar_url || kyc?.profile_photo_url;
+
+  const getValidImageUrl = (...candidates) => {
+    for (const url of candidates) {
+      if (typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:image"))) {
+        return url;
+      }
+    }
+    return null;
+  };
+
+  const avatarUrl = getValidImageUrl(user?.profilePictureUrl, kyc?.profile_photo_url, user?.avatar_url);
 
   return (
     <View className="flex-1 bg-white">
@@ -194,10 +205,21 @@ export default function Settings() {
             <>
               <View className="flex-row items-center mb-8">
                 <Pressable onPress={handleChangePhoto} className="w-[55px] h-[55px] rounded-full bg-[#F0F0FF] items-center justify-center">
-                  {avatarUrl ? (
-                    <Image source={{ uri: avatarUrl }} className="w-full h-full rounded-full" resizeMode="cover" />
-                  ) : <Ionicons name="person-outline" size={24} color="#4D45ED" />}
-                  <View className="absolute -right-2 -bottom-1 bg-[#4D45ED] rounded-full p-1"><Ionicons name="camera" size={12} color="white" /></View>
+                  <View className="w-full h-full rounded-full overflow-hidden items-center justify-center">
+                    {avatarUrl && !avatarLoadError ? (
+                      <Image
+                        source={{ uri: avatarUrl }}
+                        className="w-full h-full rounded-full"
+                        resizeMode="cover"
+                        onError={() => setAvatarLoadError(true)}
+                      />
+                    ) : (
+                      <Text className="text-[#4D45ED] font-bold text-xl">
+                        {displayName.charAt(0).toUpperCase()}
+                      </Text>
+                    )}
+                  </View>
+                  <View className="absolute -right-1 -bottom-1 bg-[#4D45ED] rounded-full p-1"><Ionicons name="camera" size={12} color="white" /></View>
                 </Pressable>
                 <View className="ml-6 flex-1">
                   <Text className="text-[16px] text-[#272727] font-manrope-extrabold tracking-tight">
