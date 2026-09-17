@@ -3,6 +3,7 @@ import {
   Image,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StatusBar,
   Text,
@@ -26,21 +27,26 @@ const buyFilter = "Customer Requirement";
 const formatIndianEarningAmount = (amount) => {
   const numericAmount = Number(amount);
 
-  if (amount === null || amount === undefined || !Number.isFinite(numericAmount)) {
-    return "0";
+  if (amount === null || amount === undefined || !Number.isFinite(numericAmount) || numericAmount <= 0) {
+    return "₹0";
   }
 
-  if (numericAmount <= 0) return "0";
-
   if (numericAmount >= 10000000) {
-    return `${(numericAmount / 10000000).toFixed(numericAmount % 10000000 === 0 ? 0 : 1)} Cr`;
+    const cr = (numericAmount / 10000000).toFixed(2).replace(/\.00$/, "").replace(/(\.[1-9])0$/, "$1");
+    return `₹${cr} Cr`;
   }
 
   if (numericAmount >= 100000) {
-    return `${(numericAmount / 100000).toFixed(numericAmount % 100000 === 0 ? 0 : 1)} Lakh`;
+    const lakh = (numericAmount / 100000).toFixed(2).replace(/\.00$/, "").replace(/(\.[1-9])0$/, "$1");
+    return `₹${lakh} Lakh`;
   }
 
-  return numericAmount.toLocaleString("en-IN");
+  if (numericAmount >= 1000) {
+    const k = (numericAmount / 1000).toFixed(1).replace(/\.0$/, "");
+    return `₹${k} K`;
+  }
+
+  return `₹${numericAmount.toLocaleString("en-IN")}`;
 };
 
 const propertyCategories = [
@@ -73,6 +79,7 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState("residential");
   const [selectedPropertyType, setSelectedPropertyType] = useState(null);
   const [avatarLoadError, setAvatarLoadError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   
   const dispatch = useDispatch();
   const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched && !n.is_read).length || 0);
@@ -82,14 +89,29 @@ export default function Home() {
   const shortlistedProperties = useSelector(state => state.property?.shortlistedProperties || []);
   const shortlistedLoading = useSelector(state => state.property?.shortlistedLoading || false);
 
+  const loadHomeData = useCallback(async () => {
+    await Promise.allSettled([
+      dispatch(fetchBrokerStats()),
+      dispatch(fetchMyProjects()),
+      dispatch(fetchUserProfile()),
+      dispatch(fetchKyc()),
+      dispatch(fetchNotifications()),
+    ]);
+  }, [dispatch]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadHomeData();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadHomeData]);
+
   useFocusEffect(
     useCallback(() => {
-      dispatch(fetchBrokerStats());
-      dispatch(fetchMyProjects());
-      dispatch(fetchUserProfile());
-      dispatch(fetchKyc());
-      dispatch(fetchNotifications());
-    }, [dispatch])
+      loadHomeData();
+    }, [loadHomeData])
   );
 
   const stats = [
@@ -209,7 +231,16 @@ export default function Home() {
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={{ paddingBottom: 160 }} 
-        bounces={false}
+        alwaysBounceVertical={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#4D45ED", "#362ddc"]}
+            tintColor="#ffffff"
+            progressViewOffset={Platform.OS === "android" ? (StatusBar.currentHeight || 24) + 10 : 0}
+          />
+        }
         className="bg-white"
       >
         
@@ -338,9 +369,29 @@ export default function Home() {
           </View>
 
           {/* Branch channel partner earning summary banner layout */}
-          <View className="mb-6">
+          <View className="mb-6 items-center">
+            {/* Top decorative layer */}
+            <View
+              style={{
+                height: 8.5,
+                width: '82%',
+                backgroundColor: '#E1E0FF',
+                borderTopLeftRadius: 12,
+                borderTopRightRadius: 12,
+              }}
+            />
+            {/* Middle decorative layer */}
+            <View
+              style={{
+                height: 8.5,
+                width: '92%',
+                backgroundColor: '#ADAAFF',
+                borderTopLeftRadius: 14,
+                borderTopRightRadius: 14,
+              }}
+            />
+            {/* Main Card */}
             <View className="w-full overflow-hidden rounded-[20px] bg-white border border-[#E5E7EB] shadow-xs">
-              <View className="h-[6px] bg-[#C8B8FF]" />
               <View className="flex-row items-center py-5 px-4 gap-3">
                 <Image
                   source={require("../../assets/images/wallet.png")} 
