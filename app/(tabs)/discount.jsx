@@ -69,7 +69,7 @@ export default function Discount() {
     const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
     const router = useRouter();
-    const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
+    const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched && !n.is_read).length || 0);
     const { commissions, loading, error } = useSelector((state) => state.wallet);
     const [search, setSearch] = useState("");
     const [filterModalVisible, setFilterModalVisible] = useState(false);
@@ -163,7 +163,7 @@ export default function Discount() {
                 <Text className="text-[16px] text-black font-lato-bold ml-8">Commission History</Text>
                 <TouchableOpacity
                     className="p-1 relative"
-                    onPress={() => router.push("/notifications")}
+                    onPress={() => router.push("/(screens)/notifications")}
                 >
                     <Ionicons name="notifications" size={22} color="black" />
                     {unwatchedCount > 0 ? (

@@ -14,7 +14,7 @@ const KycModal = () => {
     const isSubmitted = ['pending', 'submitted', 'under_review', 'in_review'].includes(kycStatus);
 
     const snapPoints = useMemo(() => ['92%'], []);
-    const shouldHideForRoute = pathname.includes('kyc') || pathname.includes('my-documents');
+    const shouldHideForRoute = pathname.includes('kyc');
     const isApproved = ['approved', 'verified'].includes(kycStatus) || isKycCompleted;
     const shouldPromptKyc = Boolean(token) && kycChecked && !isApproved && !shouldHideForRoute;
 

@@ -35,7 +35,7 @@ export default function PropertyType() {
     // Real state selectors
     const properties = useSelector(state => state.property.shortlistedProperties || []);
     const loading = useSelector(state => state.property.shortlistedLoading || false);
-    const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
+    const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched && !n.is_read).length || 0);
     const router = useRouter();
 
     // Local frontend filter states wrapped inside an unified layout boundaries track object
@@ -189,7 +189,7 @@ export default function PropertyType() {
                     <Text className="text-[16px] text-black font-lato-bold">{currentTypeLabel}</Text>
                     <Pressable
                         className="p-1 relative"
-                        onPress={() => router.push("/notifications")}
+                        onPress={() => router.push("/(screens)/notifications")}
                     >
                         <Ionicons name="notifications" size={22} color="black" />
                         {unwatchedCount > 0 ? (

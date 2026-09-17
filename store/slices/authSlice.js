@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { fetchNotifications } from './notificationSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.31.27:3001';
@@ -49,6 +50,7 @@ export const loadToken = createAsyncThunk('auth/loadToken', async (_, { dispatch
     if (token) {
         dispatch(fetchUserProfile());
         dispatch(fetchKyc());
+        dispatch(fetchNotifications());
     }
     return { token, user };
 });

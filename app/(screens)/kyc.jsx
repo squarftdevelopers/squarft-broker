@@ -19,6 +19,7 @@ import { Redirect, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchKyc, uploadKyc, logout, setKycCompleted, fetchUserProfile } from '../../store/slices/authSlice';
+import { sanitizeS3Url } from '../../utils/s3ImageUrl';
 
 
 const isApprovedStatus = (status) => status === 'verified';
@@ -29,15 +30,15 @@ const statusMeta = {
     icon: 'check-decagram-outline',
     color: '#16A34A',
     bg: '#DCFCE7',
-    title: 'KYC Approved',
-    message: 'Your KYC has been approved. You can continue using the broker dashboard.',
+    title: 'Documents Approved',
+    message: 'Your documents have been approved. You can continue using the broker dashboard.',
     action: 'Continue to Dashboard',
   },
   under_review: {
     icon: 'clock-outline',
     color: '#CA8A04',
     bg: '#FEF9C3',
-    title: 'KYC Under Review',
+    title: 'Documents Under Review',
     message: 'Your documents have been submitted. App access will unlock after admin approval.',
     action: 'Refresh Status',
   },
@@ -59,13 +60,9 @@ const UploadBox = ({ label, value, existingUrl, icon, onPress, onRemove, useCame
             <Pressable disabled={disabled} onPress={onRemove} style={styles.removeButton}>
               <Ionicons name="trash-outline" size={18} color="#DC2626" />
             </Pressable>
-          ) : (
-            <Pressable disabled={disabled} onPress={onPress} style={styles.replaceButton}>
-              <Text style={styles.replaceText}>Replace</Text>
-            </Pressable>
-          )}
+          ) : null}
         </View>
-        <Image source={{ uri: value?.uri || existingUrl }} style={styles.preview} resizeMode="cover" />
+        <Image source={{ uri: value?.uri || sanitizeS3Url(existingUrl) }} style={styles.preview} resizeMode="cover" />
       </View>
     ) : (
       <Pressable disabled={disabled} onPress={onPress} style={styles.uploadBox}>
@@ -195,7 +192,7 @@ export default function KycScreen() {
     const cleanPan = panNumber.trim().toUpperCase();
     if ((!profilePhoto && !remoteKyc?.profile_photo_url) || (!aadharFront && !remoteKyc?.aadhar_front_url)
       || (!aadharBack && !remoteKyc?.aadhar_back_url) || (!panCard && !remoteKyc?.pan_card_url)) {
-      Alert.alert('Incomplete KYC', 'Please upload profile photo, Aadhaar front, Aadhaar back, and PAN card.');
+      Alert.alert('Incomplete Documents', 'Please upload profile photo, Aadhaar front, Aadhaar back, and PAN card.');
       return;
     }
     if (cleanAadhaar.length !== 12) {
@@ -227,7 +224,7 @@ export default function KycScreen() {
       router.replace('/(tabs)/home');
     } catch (error) {
       await loadKycStatus();
-      Alert.alert('KYC Failed', error.message || 'Unable to submit KYC. Please try again.');
+      Alert.alert('Submission Failed', error.message || 'Unable to submit documents. Please try again.');
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -257,7 +254,7 @@ export default function KycScreen() {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#4A43EC" />
-        <Text style={styles.loaderText}>Loading KYC status...</Text>
+        <Text style={styles.loaderText}>Loading documents...</Text>
       </View>
     );
   }
@@ -297,7 +294,7 @@ export default function KycScreen() {
         <Pressable disabled={submitting} onPress={handleBack} style={styles.headerBackButton}>
           <Ionicons name="arrow-back" size={22} color="#111827" />
         </Pressable>
-        <Text style={styles.headerTitle}>KYC Verification</Text>
+        <Text style={styles.headerTitle}>My Documents</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -311,14 +308,14 @@ export default function KycScreen() {
             <View style={styles.rejectedBanner}>
               <MaterialCommunityIcons name="alert-circle-outline" size={20} color="#DC2626" />
               <Text style={styles.rejectedText}>
-                Your KYC was rejected{rejectionReason ? `: ${rejectionReason}` : '. Please re-upload valid documents.'}
+                Your documents were rejected{rejectionReason ? `: ${rejectionReason}` : '. Please re-upload valid documents.'}
               </Text>
             </View>
           )}
 
           <Text style={styles.subtitle}>
             {isRejected
-              ? 'Update the rejected documents and re-submit your KYC for admin approval.'
+              ? 'Update the rejected documents and re-submit for admin approval.'
               : 'Upload all identity documents. Dashboard access unlocks after admin approval.'}
           </Text>
 
@@ -383,7 +380,7 @@ export default function KycScreen() {
             {submitting ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.submitText}>{isRejected ? 'Re-submit KYC' : 'Submit KYC'}</Text>
+              <Text style={styles.submitText}>{isRejected ? 'Re-submit Documents' : 'Submit Documents'}</Text>
             )}
           </Pressable>
         </ScrollView>

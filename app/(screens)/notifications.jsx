@@ -3,7 +3,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, Stack } from "expo-router";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState } from "react";
-import { markAllAsWatched, markAllReadApi, markAsWatched, fetchNotifications } from "../../store/slices/notificationSlice";
+import { markAllAsWatched, markAllReadApi, markAsWatched, markNotificationReadApi, fetchNotifications } from "../../store/slices/notificationSlice";
 import { resolveNotificationRoute } from "../../utils/notificationRoutes";
 
 export default function Notifications() {
@@ -17,14 +17,31 @@ export default function Notifications() {
     setRefreshing(true);
     try {
       await dispatch(fetchNotifications());
+      dispatch(markAllAsWatched());
+      dispatch(markAllReadApi());
     } finally {
       setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    dispatch(fetchNotifications());
+    dispatch(fetchNotifications()).then(() => {
+      dispatch(markAllAsWatched());
+      dispatch(markAllReadApi());
+    });
   }, [dispatch]);
+
+  const handleNotificationPress = (item) => {
+    dispatch(markAsWatched(item.id));
+    dispatch(markNotificationReadApi(item.id));
+
+    if (item.metadata) {
+      const route = resolveNotificationRoute(item.metadata);
+      if (route && route !== '/(screens)/notifications' && route !== '/notifications') {
+        router.push(route);
+      }
+    }
+  };
 
   const getIcon = (type) => {
     switch (type) {
@@ -85,7 +102,7 @@ export default function Notifications() {
         </Pressable>
       </View>
 
-      {loading ? (
+      {loading && notifications.length === 0 ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#4A43EC" />
         </View>
@@ -99,7 +116,7 @@ export default function Notifications() {
             No notification yet
           </Text>
           <Text className="text-[12px] font-manrope-medium text-[#9CA3AF] mt-2.5 text-center leading-5">
-            All notification we send will appear here, so you can view them easly anytime.
+            All notification we send will appear here, so you can view them easily anytime.
           </Text>
         </View>
       ) : (
@@ -117,9 +134,10 @@ export default function Notifications() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 100 }}
         >
           {notifications.map((item) => (
-            <View
+            <Pressable
               key={item.id}
-              className="flex-row mb-6 relative"
+              onPress={() => handleNotificationPress(item)}
+              className="flex-row mb-6 relative active:opacity-75"
             >
               {getIcon(item.type)}
               <View className="ml-4 flex-1">
@@ -129,14 +147,16 @@ export default function Notifications() {
                 <Text className="text-[13px] text-[#9CA3AF] font-manrope-medium leading-5">
                   {item.description}
                 </Text>
-                <Text className="text-[10px] text-[#9CA3AF] font-manrope-medium italic self-end mt-1">
-                  {item.time}
-                </Text>
+                {item.time ? (
+                  <Text className="text-[10px] text-[#9CA3AF] font-manrope-medium italic self-end mt-1">
+                    {item.time}
+                  </Text>
+                ) : null}
               </View>
               {!item.watched && (
                 <View className="absolute top-1 right-0 w-2 h-2 bg-[#4A43EC] rounded-full" />
               )}
-            </View>
+            </Pressable>
           ))}
         </ScrollView>
       )}

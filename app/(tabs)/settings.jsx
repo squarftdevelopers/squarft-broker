@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, deleteAccount, fetchUserProfile, fetchKyc, updateProfilePicture } from "../../store/slices/authSlice";
 import { useEffect, useState } from "react";
+import { sanitizeS3Url } from "../../utils/s3ImageUrl";
 
 const { width, height } = Dimensions.get("window");
 
@@ -91,7 +92,6 @@ export default function Settings() {
   const menuItems = [
     { id: 1, label: "Home", icon: "home-outline", type: "ionicons" },
     { id: 2, label: "My added", icon: "plus-box-outline", type: "material-community" },
-    { id: 6, label: "KYC Verification", icon: "card-account-details-outline", type: "material-community" },
     {
       id: 3,
       label: "Term and conditions",
@@ -110,13 +110,17 @@ export default function Settings() {
   const getValidImageUrl = (...candidates) => {
     for (const url of candidates) {
       if (typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:image"))) {
-        return url;
+        return sanitizeS3Url(url);
       }
     }
     return null;
   };
 
   const avatarUrl = getValidImageUrl(user?.profilePictureUrl, kyc?.profile_photo_url, user?.avatar_url);
+
+  useEffect(() => {
+    setAvatarLoadError(false);
+  }, [avatarUrl]);
 
   return (
     <View className="flex-1 bg-white">
@@ -249,7 +253,7 @@ export default function Settings() {
                 </Pressable>
 
                 <Pressable
-                  onPress={() => router.push("/(screens)/my-documents")}
+                  onPress={() => router.push("/(screens)/kyc")}
                   className="flex-1 bg-[#E1E0FF] rounded-[14px] p-3 flex-row items-center justify-between h-[65px]"
                   style={{ marginLeft: 8 }}
                 >
@@ -284,7 +288,6 @@ export default function Settings() {
                 if (item.id === 4) router.push("/(screens)/privacy-policy");
                 if (item.id === 5) router.push("/(screens)/contact-us");
                 if (item.id === 7) router.push("/(screens)/faqs");
-                if (item.id === 6) router.push("/(screens)/kyc");
               }}
             >
               <View className="w-8 items-center mr-4">

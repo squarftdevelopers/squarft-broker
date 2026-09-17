@@ -198,7 +198,7 @@ export default function Favourite() {
     const router = useRouter();
     const properties = useSelector((state) => state.myAdded.list);
     const loading = useSelector((state) => state.myAdded.loading);
-    const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
+    const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched && !n.is_read).length || 0);
     const [search, setSearch] = useState("");
     const [deleteId, setDeleteId] = useState(null);
     const [selectedProperty, setSelectedProperty] = useState(null);
@@ -361,7 +361,7 @@ export default function Favourite() {
                 <Text className="text-[16px] text-black font-lato-bold ml-8">My Added</Text>
                 <TouchableOpacity
                     className="p-1 relative"
-                    onPress={() => router.push("/notifications")}
+                    onPress={() => router.push("/(screens)/notifications")}
                 >
                     <Ionicons name="notifications" size={22} color="black" />
                     {unwatchedCount > 0 ? (

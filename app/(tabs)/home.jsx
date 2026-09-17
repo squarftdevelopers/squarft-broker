@@ -15,6 +15,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { fetchBrokerStats, fetchMyProjects } from "../../store/slices/brokerSlice";
 import { fetchUserProfile, fetchKyc } from "../../store/slices/authSlice";
 import { fetchShortlistedProperties } from "../../store/slices/propertySlice";
+import { fetchNotifications } from "../../store/slices/notificationSlice";
+import { sanitizeS3Url } from "../../utils/s3ImageUrl";
 
 const { width } = Dimensions.get("window");
 
@@ -73,7 +75,7 @@ export default function Home() {
   const [avatarLoadError, setAvatarLoadError] = useState(false);
   
   const dispatch = useDispatch();
-  const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched).length || 0);
+  const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched && !n.is_read).length || 0);
   const brokerStats = useSelector(state => state.broker?.stats);
   const user = useSelector(state => state.auth?.user);
   const kyc = useSelector(state => state.auth?.kyc);
@@ -86,6 +88,7 @@ export default function Home() {
       dispatch(fetchMyProjects());
       dispatch(fetchUserProfile());
       dispatch(fetchKyc());
+      dispatch(fetchNotifications());
     }, [dispatch])
   );
 
@@ -184,13 +187,17 @@ export default function Home() {
   const getValidImageUrl = (...candidates) => {
     for (const url of candidates) {
       if (typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:image"))) {
-        return url;
+        return sanitizeS3Url(url);
       }
     }
     return null;
   };
 
   const avatarUrl = getValidImageUrl(user?.profilePictureUrl, kyc?.profile_photo_url, user?.avatar_url);
+
+  useEffect(() => {
+    setAvatarLoadError(false);
+  }, [avatarUrl]);
 
   return (
     <View className="flex-1 bg-white">
