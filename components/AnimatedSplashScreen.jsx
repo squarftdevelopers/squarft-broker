@@ -27,7 +27,7 @@ export default function AnimatedSplashScreen({ onFinish }) {
             <Image
                 source={require('../assets/images/splash-mobile.gif')}
                 style={styles.image}
-                contentFit="cover"
+                contentFit="contain"
                 priority="high"
             />
         </Animated.View>
@@ -37,7 +37,7 @@ export default function AnimatedSplashScreen({ onFinish }) {
 const styles = StyleSheet.create({
     container: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: '#4A43EC',
+        backgroundColor: '#4848ff',
         zIndex: 9999,
     },
     image: {
