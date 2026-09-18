@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch } from "react-redux";
 import KycModal from "../../components/KycModal";
 import { clearCurrentItem } from "../../store/slices/myAddedSlice";
-import { resetProject } from "../../store/slices/projectSlice";
 
 const TAB_COLOR = "#4A43EC";
 const MUTED_TAB_COLOR = "#62676B";
@@ -63,10 +62,9 @@ export default function TabsLayout() {
     const insets = useSafeAreaInsets();
     const androidBottomInset = Platform.OS === "android" ? Math.max(insets.bottom, 0) : 0;
     const iosBottomPadding = Platform.OS === "ios" ? Math.max(insets.bottom - 8, 4) : 6;
-    const openFreshAddProject = () => {
-        dispatch(resetProject());
+    const openFreshAddProperty = () => {
         dispatch(clearCurrentItem());
-        router.replace(`/(tabs)/addProject?mode=add&itemId=&itemType=&fresh=${Date.now()}`);
+        router.replace(`/(tabs)/addProperty?fresh=${Date.now()}`);
     };
 
     return (
@@ -123,7 +121,7 @@ export default function TabsLayout() {
                     }}
                 />
                 <Tabs.Screen
-                    name="addProject"
+                    name="addProperty"
                     options={{
                         headerShown: false,
                         tabBarLabel: "Add",
@@ -133,7 +131,7 @@ export default function TabsLayout() {
                             return (
                               <Pressable
                                     {...pressableProps}
-                                    onPress={openFreshAddProject}
+                                    onPress={openFreshAddProperty}
                                     hitSlop={{ top: 16, right: 8, bottom: 8, left: 8 }}
                                     style={({ pressed }) => [
                                         style,

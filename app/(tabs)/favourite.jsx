@@ -278,21 +278,13 @@ export default function Favourite() {
 
     const handleEditPress = (item) => {
         console.log('Γ£Å∩╕Å [favourite.jsx] handleEditPress called with item:', item);
-        // Check if it's a property or project
-        const isProperty = item?.item_type === 'property';
-        
-        console.log('≡ƒô¥ [favourite.jsx] Editing as:', isProperty ? 'property' : 'project');
-        
-        // Fetch details and navigate to edit form
-        const fetchAction = isProperty ? fetchPropertyDetails : fetchProjectDetails;
-        
-        dispatch(fetchAction(item.id))
+        dispatch(fetchPropertyDetails(item.id))
             .unwrap()
             .then(() => {
                 console.log('Γ£à [favourite.jsx] Details fetched, navigating to edit form');
                 router.push({
-                    pathname: '/(tabs)/addProject',
-                    params: { itemId: item.id, mode: 'edit', itemType: isProperty ? 'property' : 'project' }
+                    pathname: '/(tabs)/addProperty',
+                    params: { itemId: item.id, mode: 'edit' }
                 });
             })
             .catch((error) => {
@@ -403,7 +395,7 @@ export default function Favourite() {
                         {search || activeFilters ? 'No properties match your filters' : 'No properties added yet'}
                     </Text>
                     <Text className="text-gray-400 font-lato-regular text-center text-xs mt-2">
-                        {!search && !activeFilters && 'Add properties from the "Add Project" tab'}
+                        {!search && !activeFilters && 'Add properties from the Add Property tab'}
                     </Text>
                 </View>
             ) : (

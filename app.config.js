@@ -25,8 +25,8 @@ const nativeGoogleMapsKey =
   readDotEnvValue("EXPO_PUBLIC_GOOGLE_MAPS_API_KEY");
 
 if (!nativeGoogleMapsKey) {
-  console.warn(
-    "Google Maps API key is missing; native Google Maps will not work in standalone builds."
+  throw new Error(
+    "Google Maps API key is missing. Set GOOGLE_MAPS_API_KEY or EXPO_PUBLIC_GOOGLE_MAPS_API_KEY before building the app."
   );
 }
 
@@ -37,7 +37,7 @@ module.exports = {
     // The JavaScript location picker uses this to decide whether Google
     // Places/Geocoding is available. The Android SDK receives the same key
     // below during the native build.
-    googleMapsApiKey: nativeGoogleMapsKey || null,
+    googleMapsApiKey: nativeGoogleMapsKey,
     "eas": {
       "projectId": "11360005-bb4e-452d-9196-4731e5578fc4"
     },
@@ -46,16 +46,14 @@ module.exports = {
     ...appJson.expo.ios,
     config: {
       ...appJson.expo.ios?.config,
-      ...(nativeGoogleMapsKey ? { googleMapsApiKey: nativeGoogleMapsKey } : {}),
+      googleMapsApiKey: nativeGoogleMapsKey,
     },
   },
   android: {
     ...appJson.expo.android,
     config: {
       ...appJson.expo.android?.config,
-      ...(nativeGoogleMapsKey
-        ? { googleMaps: { apiKey: nativeGoogleMapsKey } }
-        : {}),
+      googleMaps: { apiKey: nativeGoogleMapsKey },
     },
   },
   updates: {

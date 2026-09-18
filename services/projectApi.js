@@ -116,4 +116,24 @@ export const projectOverviewApi = {
     getDraftProjects: () => api.get('/api/v1/project-panel/overview/my-drafts'),
 };
 
+// Broker property submission APIs. Broker-created inventory is always attached
+// to an existing live project; brokers never create projects from this app.
+export const brokerPropertyApi = {
+    sendOwnerOtp: (phone) => api.post('/auth/send-otp', { phone, purpose: 'owner_contact', role: 'broker' }),
+    verifyOwnerOtp: (otp_token, otp) => api.post('/auth/verify-otp', { otp_token, otp }),
+    getLiveProjects: () => api.get('/api/v1/broker/properties/live-projects'),
+    getProperty: (propertyId) => api.get(`/api/v1/broker/properties/${propertyId}`),
+    updateProperty: (propertyId, data) => api.patch(`/api/v1/broker/properties/${propertyId}`, data),
+    createBasicDetails: (data) => api.post('/api/v1/broker/properties/basic-details', data),
+    updateOwnerDetails: (propertyId, data) => api.put(`/api/v1/broker/properties/${propertyId}/owner-details`, data),
+    updatePropertyDetails: (propertyId, data) => api.put(`/api/v1/broker/properties/${propertyId}/property-details`, data),
+    updateAreaDetails: (propertyId, data) => api.put(`/api/v1/broker/properties/${propertyId}/area-details`, data),
+    updatePricingDetails: (propertyId, data) => api.put(`/api/v1/broker/properties/${propertyId}/pricing-details`, data),
+    uploadMedia: (propertyId, formData) => api.post(
+        `/api/v1/broker/properties/${propertyId}/add-media`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }
+    ),
+};
+
 export default api;
