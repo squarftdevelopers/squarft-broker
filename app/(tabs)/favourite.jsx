@@ -1,12 +1,13 @@
-﻿import { View, Text, FlatList, TextInput, TouchableOpacity, Image, Modal, StatusBar, ActivityIndicator, Alert } from "react-native";
+import { View, Text, FlatList, TextInput, TouchableOpacity, Image, Modal, StatusBar, ActivityIndicator, Alert } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { fetchMyAddedProperties, deleteProject, deleteProperty, fetchProjectDetails, fetchPropertyDetails } from "../../store/slices/myAddedSlice";
+import { fetchMyAddedProperties, deleteProperty, fetchPropertyDetails } from "../../store/slices/myAddedSlice";
 import PropertyDetailSheet from "../../components/property/PropertyDetailSheet";
+import DynamicPropertyImage from "../../components/property/DynamicPropertyImage";
 import FilterModal from "../../components/FilterModal";
 
 const DEFAULT_BUDGET_RANGE = [2000000, 50000000];
@@ -61,14 +62,23 @@ function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
     // Format location - show city only (area field contains "TBD" or locality name)
     const location = item.city || 'Location not set';
     
-    // Format price - use base_price as fallback if min_price/max_price are not set
-    const basePrice = item.base_price || 0;
-    const priceFrom = item.price_from || item.min_price || basePrice;
-    const priceTo = item.price_to || item.max_price || basePrice;
-    const priceDisplay = priceTo > priceFrom 
-        ? `Γé╣${(priceFrom / 100000).toFixed(2)}L - Γé╣${(priceTo / 100000).toFixed(2)}L`
-        : basePrice > 0 
-            ? `Γé╣${(basePrice / 100000).toFixed(2)}L`
+    // Format price - show exact value without conversion or units
+    const rawPrice = item.selling_price ?? item.price ?? item.base_price ?? item.price_from ?? item.min_price;
+    const priceFrom = item.price_from || item.min_price;
+    const priceTo = item.price_to || item.max_price;
+    const formatExact = (val) => {
+        if (val === undefined || val === null || val === '') return '';
+        const cleaned = String(val).replace(/[^\d.]/g, '').trim();
+        const num = Number(cleaned);
+        if (Number.isFinite(num) && num > 0) {
+            return `\u20B9${num.toLocaleString('en-IN')}`;
+        }
+        return cleaned ? `\u20B9${cleaned}` : '';
+    };
+    const priceDisplay = (priceTo && priceFrom && Number(String(priceTo).replace(/[^\d.]/g, '')) > Number(String(priceFrom).replace(/[^\d.]/g, '')))
+        ? `${formatExact(priceFrom)} - ${formatExact(priceTo)}`
+        : (rawPrice !== undefined && rawPrice !== null && rawPrice !== '' && rawPrice !== 0 && rawPrice !== '0')
+            ? formatExact(rawPrice)
             : 'Price not set';
 
     // Property name - backend normalizes projects to have 'title' field, properties have 'title' natively
@@ -81,13 +91,13 @@ function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
     const totalArea = item.total_area_sqft || item.total_area;
 
     const handleEdit = () => {
-        console.log('Γ£Å∩╕Å [PropertyCard] Edit button pressed for item:', item.id);
+        console.log('[PropertyCard] Edit button pressed for item:', item.id);
         setMenuOpen(false);
         onEditPress?.(item);
     };
 
     const handleDelete = () => {
-        console.log('≡ƒùæ∩╕Å [PropertyCard] Delete button pressed for item:', item.id);
+        console.log('[PropertyCard] Delete button pressed for item:', item.id);
         setMenuOpen(false);
         onDeletePress?.(item.id);
     };
@@ -103,17 +113,7 @@ function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
             onPress={() => !menuOpen && onPress?.(item)}
             className="flex-row bg-white border border-[#E5E7EB] rounded-[20px] mb-4 p-3 items-start"
         >
-            {coverImage ? (
-                <Image 
-                    source={{ uri: coverImage }} 
-                    className="w-[108px] h-[105px] rounded-2xl" 
-                    resizeMode="cover" 
-                />
-            ) : (
-                <View className="w-[108px] h-[105px] rounded-2xl bg-gray-200 items-center justify-center">
-                    <Ionicons name="image-outline" size={40} color="#9CA3AF" />
-                </View>
-            )}
+            <DynamicPropertyImage uri={coverImage} style={{ width: 108, height: 105, borderRadius: 16 }} label="No property image" />
             <View className="flex-1 ml-2.5">
                 <View className="flex-row items-center mb-0.5">
                     <View className="w-[7px] h-[7px] rounded-full bg-[#4A43EC] mr-1" />
@@ -230,9 +230,6 @@ export default function Favourite() {
 
     // Debounced search - fetch from backend when search changes
     useEffect(() => {
-        // Don't trigger search if there's no search text and no filters
-        if (!search.trim() && !hasSelectedFilters(activeFilters)) return;
-        
         const timer = setTimeout(() => {
             dispatch(fetchMyAddedProperties(buildMyAddedFilters({ search, filters: activeFilters })));
         }, 500); // 500ms debounce
@@ -251,25 +248,14 @@ export default function Favourite() {
     };
 
     const handleConfirmDelete = async () => {
-        console.log('≡ƒùæ∩╕Å [favourite.jsx] handleConfirmDelete called with deleteId:', deleteId);
+        console.log('[favourite.jsx] handleConfirmDelete called with deleteId:', deleteId);
         setDeleting(true);
         try {
-            // Check if it's a property or project based on item_type field
-            const itemToDelete = properties.find(item => item.id === deleteId);
-            console.log('≡ƒöì [favourite.jsx] Item to delete:', itemToDelete);
-            const isProperty = itemToDelete?.item_type === 'property';
-            
-            console.log('≡ƒô¥ [favourite.jsx] Deleting as:', isProperty ? 'property' : 'project');
-            
-            if (isProperty) {
-                await dispatch(deleteProperty(deleteId)).unwrap();
-            } else {
-                await dispatch(deleteProject(deleteId)).unwrap();
-            }
-            console.log('Γ£à [favourite.jsx] Delete successful');
+            await dispatch(deleteProperty(deleteId)).unwrap();
+            console.log('[favourite.jsx] Delete successful');
             setDeleteId(null);
         } catch (error) {
-            console.error('Γ¥î [favourite.jsx] Delete failed:', error);
+            console.error('[favourite.jsx] Delete failed:', error);
             alert('Failed to delete. Please try again.');
         } finally {
             setDeleting(false);
@@ -277,18 +263,18 @@ export default function Favourite() {
     };
 
     const handleEditPress = (item) => {
-        console.log('Γ£Å∩╕Å [favourite.jsx] handleEditPress called with item:', item);
+        console.log('[favourite.jsx] handleEditPress called with item:', item);
         dispatch(fetchPropertyDetails(item.id))
             .unwrap()
             .then(() => {
-                console.log('Γ£à [favourite.jsx] Details fetched, navigating to edit form');
+                console.log('[favourite.jsx] Details fetched, navigating to edit form');
                 router.push({
                     pathname: '/(tabs)/addProperty',
                     params: { itemId: item.id, mode: 'edit' }
                 });
             })
             .catch((error) => {
-                console.error('Γ¥î [favourite.jsx] Failed to load details:', error);
+                console.error('[favourite.jsx] Failed to load details:', error);
                 Alert.alert('Error', `Failed to load details: ${error}`);
             });
     };
@@ -298,15 +284,12 @@ export default function Favourite() {
 
         const requestId = detailRequestRef.current + 1;
         detailRequestRef.current = requestId;
-        const isProperty = item?.item_type === 'property';
-        const fetchAction = isProperty ? fetchPropertyDetails : fetchProjectDetails;
-
         setSelectedProperty(item);
         setPropertySheetVisible(true);
         setPropertyDetailLoading(true);
         setPropertyDetailError(null);
 
-        dispatch(fetchAction(item.id))
+        dispatch(fetchPropertyDetails(item.id))
             .unwrap()
             .then((details) => {
                 if (detailRequestRef.current !== requestId) return;
@@ -420,7 +403,7 @@ export default function Favourite() {
                 <View className="flex-1 justify-center items-center" style={{ backgroundColor: "rgba(0,0,0,0.4)" }}>
                     <View className="bg-white rounded-3xl mx-6 px-6 py-8 w-[85%]" style={{ elevation: 10 }}>
                         <Text className="text-[18px] font-roboto-bold text-[#1a1a1a] text-center mb-8">
-                            Are you sure you want to{"\n"}delete this project?
+                            Are you sure you want to{"\n"}delete this property?
                         </Text>
                         <View className="flex-row gap-4">
                             <TouchableOpacity

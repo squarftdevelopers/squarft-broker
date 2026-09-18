@@ -220,9 +220,21 @@ const CommissionHistoryScreen = () => {
                                         <Text className="text-[13px] font-manrope-bold text-[#272727]" numberOfLines={1}>
                                             {item.propertyName || 'Commission Earned'}
                                         </Text>
-                                        <Text className="text-[10px] text-gray-400 font-manrope-medium mt-0.5">
-                                            {formatDate(item.createdAt)}
-                                        </Text>
+                                        <View className="flex-row items-center flex-wrap gap-1 mt-0.5">
+                                            {item.propertyAddress ? (
+                                                <Text className="text-[10px] text-gray-500 font-manrope-medium" numberOfLines={1}>
+                                                    {item.propertyAddress} •
+                                                </Text>
+                                            ) : null}
+                                            <Text className="text-[10px] text-gray-400 font-manrope-medium">
+                                                {formatDate(item.createdAt)}
+                                            </Text>
+                                            {item.commissionKind ? (
+                                                <Text className="text-[10px] text-[#4A43EC] font-manrope-semibold">
+                                                    • {item.commissionKind === 'client_referral' ? 'Client Referral' : 'Property Deal'}
+                                                </Text>
+                                            ) : null}
+                                        </View>
                                     </View>
                                 </View>
                                 <View className="items-end">

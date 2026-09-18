@@ -4,7 +4,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
-import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import { useLocalSearchParams, useNavigation } from "expo-router";
 import { brokerPropertyApi } from "../../services/projectApi";
 import LocationMapPicker from "../../components/LocationMapPicker";
 
@@ -52,7 +52,7 @@ const Choice = ({ selected, onPress, children, style }) => <Pressable onPress={o
 export default function AddProperty() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { itemId, mode } = useLocalSearchParams();
+  const { itemId, mode, fresh } = useLocalSearchParams();
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const [category, setCategory] = useState("residential");
@@ -70,7 +70,39 @@ export default function AddProperty() {
   const [propertyMapVisible, setPropertyMapVisible] = useState(false);
   const scrollRef = useRef(null);
 
-  useEffect(() => { brokerPropertyApi.getLiveProjects().then(r => setProjects(r.data?.data || [])).catch(() => setProjects([])); }, []);
+  const resetForm = () => {
+    setStep(1);
+    setCategory("residential");
+    setSubType("villa");
+    setKind("1 BHK");
+    setOwner({ name: "", phone: "", email: "", otp: "", address: "" });
+    setOwnerOtp({ token: "", verifiedToken: "", sending: false, verifying: false });
+    setDetails({ name: "", tower: "", flat: "", location: "", city: "", state: "", pincode: "", latitude: null, longitude: null, projectId: "", totalArea: "", carpetArea: "", areaUnit: "Square Feet (sq ft)", khasra: "", age: "" });
+    setPricing({ price: "", negotiable: false, excludeTax: false, paymentMode: "Full Payment", confirmed: false });
+    setImages([]);
+    setDocuments([]);
+  };
+
+  const [loadingProjects, setLoadingProjects] = useState(false);
+
+  const loadProjects = () => {
+    setLoadingProjects(true);
+    brokerPropertyApi.getLiveProjects()
+      .then(r => setProjects(r.data?.data || []))
+      .catch((err) => {
+        console.warn("Could not load projects:", err?.response?.data || err?.message);
+        setProjects([]);
+      })
+      .finally(() => setLoadingProjects(false));
+  };
+
+  useEffect(() => { loadProjects(); }, []);
+  useEffect(() => {
+    if (mode !== "edit") {
+      resetForm();
+    }
+    loadProjects();
+  }, [fresh, mode]);
   useEffect(() => {
     if (mode !== "edit" || !itemId) return;
     setBusy(true);
@@ -153,6 +185,8 @@ export default function AddProperty() {
         await brokerPropertyApi.uploadMedia(id, form);
       }
       await brokerPropertyApi.updatePricingDetails(id, { selling_price: pricing.price, is_negotiable: pricing.negotiable, tax_included: !pricing.excludeTax, payment_mode: pricing.paymentMode, submit: true });
+      resetForm();
+      Alert.alert("Success", "Property submitted successfully!");
       navigation.navigate("favourite");
     } catch (e) { Alert.alert("Could not submit", e.response?.data?.message || e.message || "Please try again."); } finally { setBusy(false); }
   };
@@ -178,7 +212,7 @@ export default function AddProperty() {
     <View style={{ flexDirection: "row", gap: 10 }}><Field value={details.tower} onChangeText={v => setDetails(d => ({ ...d, tower: v }))} placeholder="Tower no." style={{ flex: 1 }} /><Field value={details.flat} onChangeText={v => setDetails(d => ({ ...d, flat: v }))} placeholder="Flat no." style={{ flex: 1 }} /></View>
     <Field label="Location" value={details.location} onChangeText={v => setDetails(d => ({ ...d, location: v }))} placeholder="Address & Landmark" right={<Pressable onPress={() => { Keyboard.dismiss(); setPropertyMapVisible(true); }} hitSlop={12} style={{ width: 30, height: 30, borderRadius: 7, backgroundColor: "#EBEAFF", alignItems: "center", justifyContent: "center" }}><Ionicons name="map-outline" size={18} color={PURPLE} /></Pressable>} />
     <View style={{ flexDirection: "row", gap: 10 }}><Field label="City" value={details.city} onChangeText={v => setDetails(d => ({ ...d, city: v }))} placeholder="city" style={{ flex: 1 }} /><Field label="State" value={details.state} onChangeText={v => setDetails(d => ({ ...d, state: v }))} placeholder="state" style={{ flex: 1 }} /><Field label="Pincode" value={details.pincode} onChangeText={v => setDetails(d => ({ ...d, pincode: v }))} placeholder="pincode" keyboardType="number-pad" style={{ flex: 1 }} /></View>
-    <Text style={{ fontSize: 14, marginBottom: 10 }}>Select Project</Text><Pressable onPress={() => setPicker("project")} style={{ height: 47, borderWidth: 1, borderColor: "#C9C9CE", borderRadius: 7, paddingHorizontal: 14, alignItems: "center", flexDirection: "row", marginBottom: 24 }}><Text style={{ flex: 1, color: selectedProject ? "#17171B" : "#8E8E96", fontSize: 12 }}>{selectedProject?.name || "Select Live Project Near You"}</Text><Ionicons name="chevron-down-circle-outline" size={18} color="#BFC0C7" /></Pressable>
+    <Text style={{ fontSize: 14, marginBottom: 10 }}>Select Project</Text><Pressable onPress={() => { if (!projects.length) loadProjects(); setPicker("project"); }} style={{ height: 47, borderWidth: 1, borderColor: "#C9C9CE", borderRadius: 7, paddingHorizontal: 14, alignItems: "center", flexDirection: "row", marginBottom: 24 }}><Text style={{ flex: 1, color: selectedProject ? "#17171B" : "#8E8E96", fontSize: 12 }}>{selectedProject?.name || "Select Live Project Near You"}</Text><Ionicons name="chevron-down-circle-outline" size={18} color="#BFC0C7" /></Pressable>
     <View style={{ flexDirection: "row", gap: 24 }}><Field label="Total Area" value={details.totalArea} onChangeText={v => setDetails(d => ({ ...d, totalArea: v }))} placeholder="eg 1000" keyboardType="decimal-pad" right={<Pressable onPress={() => setPicker("unit")}><Text style={{ fontSize: 11 }}>{selectedUnitLabel}</Text></Pressable>} style={{ flex: 1 }} /><Field label="Carpet Area" value={details.carpetArea} onChangeText={v => setDetails(d => ({ ...d, carpetArea: v }))} placeholder="eg 200" keyboardType="decimal-pad" right={<Pressable onPress={() => setPicker("unit")}><Text style={{ fontSize: 11 }}>{selectedUnitLabel}</Text></Pressable>} style={{ flex: 1 }} /></View>
     <Field label="Khasra number" value={details.khasra} onChangeText={v => setDetails(d => ({ ...d, khasra: v }))} placeholder="Enter khasra number" />
     <Field label="Property Age" value={details.age} onChangeText={v => setDetails(d => ({ ...d, age: v }))} placeholder="Enter Property age" keyboardType="number-pad" />
@@ -195,9 +229,9 @@ export default function AddProperty() {
 
   const pickerItems = picker === "project" ? projects : areaUnits.map(x => ({ id: x, name: x }));
   return <SafeAreaView style={{ flex: 1, backgroundColor: PURPLE }} edges={["top"]}><StatusBar barStyle="light-content" backgroundColor={PURPLE} />
-    <View style={{ height: 176, paddingHorizontal: 22, paddingTop: 16 }}><View style={{ flexDirection: "row", alignItems: "center" }}><Pressable onPress={() => step > 1 ? setStep(step - 1) : router.back()} hitSlop={15}><Ionicons name="arrow-back" color="#fff" size={24} /></Pressable><Text style={{ flex: 1, textAlign: "center", color: "#fff", fontSize: 17, fontWeight: "700", marginRight: 24 }}>Add Property</Text></View><View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 52 }}>{steps.map((x, i) => <View key={x} style={{ width: "24%", alignItems: "center" }}><View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 1, borderColor: "#fff", backgroundColor: step === i + 1 ? "#fff" : "transparent", alignItems: "center", justifyContent: "center" }}><Text style={{ color: step === i + 1 ? PURPLE : "#fff", fontSize: 11 }}>{i + 1}</Text></View><Text numberOfLines={1} style={{ color: "#fff", opacity: step === i + 1 ? 1 : .82, fontSize: 10, marginTop: 9 }}>{x}</Text></View>)}</View></View>
+    <View style={{ height: 176, paddingHorizontal: 22, paddingTop: 16 }}><View style={{ flexDirection: "row", alignItems: "center" }}>{step > 1 ? <Pressable onPress={() => setStep(step - 1)} hitSlop={15}><Ionicons name="arrow-back" color="#fff" size={24} /></Pressable> : <View style={{ width: 24 }} />}<Text style={{ flex: 1, textAlign: "center", color: "#fff", fontSize: 17, fontWeight: "700" }}>Add Property</Text><View style={{ width: 24 }} /></View><View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 52 }}>{steps.map((x, i) => { const stepNum = i + 1; const isCurrent = step === stepNum; const isPrevious = stepNum < step; return <Pressable key={x} onPress={() => { if (isPrevious) setStep(stepNum); }} disabled={!isPrevious} hitSlop={{ top: 12, bottom: 12, left: 6, right: 6 }} style={{ width: "24%", alignItems: "center" }}><View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 1, borderColor: "#fff", backgroundColor: isCurrent ? "#fff" : "transparent", alignItems: "center", justifyContent: "center", opacity: isCurrent || isPrevious ? 1 : 0.6 }}><Text style={{ color: isCurrent ? PURPLE : "#fff", fontSize: 11, fontWeight: isCurrent ? "700" : "500" }}>{stepNum}</Text></View><Text numberOfLines={1} style={{ color: "#fff", opacity: isCurrent ? 1 : isPrevious ? 0.9 : 0.6, fontSize: 10, marginTop: 9, fontWeight: isCurrent ? "600" : "400" }}>{x}</Text></Pressable>; })}</View></View>
     <View style={{ flex: 1, backgroundColor: "#fff", borderTopLeftRadius: 23, borderTopRightRadius: 23, overflow: "hidden" }}><ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 21, paddingTop: 22, paddingBottom: 150 + insets.bottom }}>{step === 1 ? renderStep1() : step === 2 ? renderStep2() : step === 3 ? renderStep3() : renderStep4()}</ScrollView><View style={{ position: "absolute", left: 19, right: 19, bottom: (Platform.OS === "ios" ? 76 : 66) + insets.bottom + 14 }}><TouchableOpacity disabled={busy} onPress={step === 4 ? submit : next} style={{ height: 51, borderRadius: 9, backgroundColor: PURPLE, alignItems: "center", justifyContent: "center", shadowColor: PURPLE, shadowOpacity: .25, shadowRadius: 9, elevation: 5 }}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff", fontSize: 15 }}>{step === 4 ? "Submit" : "Next"}</Text>}</TouchableOpacity></View></View>
-    <Modal visible={!!picker} transparent animationType="slide" onRequestClose={() => setPicker(null)}><Pressable onPress={() => setPicker(null)} style={{ flex: 1, backgroundColor: "rgba(0,0,0,.28)", justifyContent: "flex-end" }}><Pressable style={{ backgroundColor: "#fff", borderTopLeftRadius: 48, borderTopRightRadius: 48, minHeight: 430, maxHeight: "72%", padding: 24, paddingTop: 56 }}><Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 20 }}>{picker === "project" ? "Select live project" : "Select area unit"}</Text><ScrollView>{pickerItems.map(item => <Pressable key={item.id} onPress={() => { if (picker === "project") setDetails(d => ({ ...d, projectId: item.id })); else setDetails(d => ({ ...d, areaUnit: item.name })); setPicker(null); }} style={{ paddingVertical: 12 }}><Text style={{ fontSize: 15, color: "#171B31" }}>{item.name}{item.city ? ` · ${item.city}` : ""}</Text></Pressable>)}</ScrollView></Pressable></Pressable></Modal>
+    {picker && <Modal visible transparent animationType="slide" onRequestClose={() => setPicker(null)}><Pressable onPress={() => setPicker(null)} style={{ flex: 1, backgroundColor: "rgba(15,23,42,.42)", justifyContent: "flex-end" }}><Pressable onPress={() => {}} style={{ backgroundColor: "white", borderTopLeftRadius: 32, borderTopRightRadius: 32, maxHeight: "76%", padding: 22, paddingBottom: 28 }}><View style={{ alignSelf: "center", height: 5, width: 42, borderRadius: 3, backgroundColor: "#D0D5DD", marginBottom: 19 }} /><View style={{ flexDirection: "row", alignItems: "center", marginBottom: 18 }}><View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: "#EEEDFF", alignItems: "center", justifyContent: "center", marginRight: 12 }}><Ionicons name={picker === "project" ? "business-outline" : "resize-outline"} size={21} color={PURPLE} /></View><View style={{ flex: 1 }}><Text style={{ fontSize: 18, fontWeight: "700", color: "#171B31" }}>{picker === "project" ? "Choose a live project" : "Choose area unit"}</Text><Text style={{ fontSize: 12, color: "#667085", marginTop: 2 }}>{picker === "project" ? "Your property will be added to this project." : "Used for both total and carpet area."}</Text></View></View><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>{loadingProjects && picker === "project" ? (<View style={{ paddingVertical: 32, alignItems: "center" }}><ActivityIndicator size="small" color={PURPLE} /><Text style={{ fontSize: 12, color: "#667085", marginTop: 8 }}>Loading projects...</Text></View>) : (<View style={picker === "unit" ? { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" } : {}}>{pickerItems.map(item => { const selected = picker === "project" ? details.projectId === item.id : details.areaUnit === item.name; return <Pressable key={item.id} onPress={() => { if (picker === "project") setDetails(d => ({ ...d, projectId: item.id })); else setDetails(d => ({ ...d, areaUnit: item.name })); setPicker(null); }} style={picker === "unit" ? { width: "48.5%", height: 58, borderWidth: 1, borderColor: selected ? PURPLE : "#EAECF0", backgroundColor: selected ? "#F4F3FF" : "white", borderRadius: 14, paddingHorizontal: 14, marginBottom: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between" } : { borderWidth: 1, borderColor: selected ? PURPLE : "#EAECF0", backgroundColor: selected ? "#F7F6FF" : "white", borderRadius: 16, padding: 15, marginBottom: 10, flexDirection: "row", alignItems: "center" }}><View style={picker === "project" ? { width: 36, height: 36, borderRadius: 12, backgroundColor: "#EEEDFF", alignItems: "center", justifyContent: "center", marginRight: 12 } : null}>{picker === "project" && <Ionicons name="business-outline" size={18} color={PURPLE} />}</View><View style={{ flex: 1 }}><Text numberOfLines={1} style={{ fontSize: 14, fontWeight: selected ? "700" : "600", color: "#171B31" }}>{item.name}</Text>{picker === "project" && <Text numberOfLines={1} style={{ fontSize: 11, color: "#667085", marginTop: 3 }}>{[item.city, item.state].filter(Boolean).join(", ") || "Live project"}</Text>}</View>{selected && <Ionicons name="checkmark-circle" size={20} color={PURPLE} />}</Pressable>; })}</View>)}{picker === "project" && !loadingProjects && pickerItems.length === 0 && (<View style={{ alignItems: "center", paddingVertical: 28 }}><Text style={{ textAlign: "center", color: "#667085", fontSize: 13, marginBottom: 12 }}>No live projects are available right now.</Text><TouchableOpacity onPress={loadProjects} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, backgroundColor: "#EEEDFF" }}><Text style={{ color: PURPLE, fontSize: 12, fontWeight: "600" }}>Retry</Text></TouchableOpacity></View>)}</ScrollView></Pressable></Pressable></Modal>}
     <LocationMapPicker visible={ownerMapVisible} initialAddress={{ location: owner.address }} onClose={() => setOwnerMapVisible(false)} onConfirm={(address) => { setOwner(o => ({ ...o, address: address.location || o.address })); setOwnerMapVisible(false); }} confirmLabel="Add this address" />
     <LocationMapPicker visible={propertyMapVisible} initialAddress={details} onClose={() => setPropertyMapVisible(false)} onConfirm={(address) => { setDetails(d => ({ ...d, location: address.location || d.location, city: address.city || d.city, state: address.state || d.state, pincode: address.pincode || d.pincode, latitude: address.latitude, longitude: address.longitude })); setPropertyMapVisible(false); }} confirmLabel="Add this location" />
   </SafeAreaView>;

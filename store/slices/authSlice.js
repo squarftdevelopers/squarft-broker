@@ -226,13 +226,17 @@ export const uploadKyc = createAsyncThunk(
 
 export const fetchKyc = createAsyncThunk(
     'auth/fetchKyc',
-    async (_, { getState, rejectWithValue }) => {
+    async (_, { getState, dispatch, rejectWithValue }) => {
         try {
             const token = getState().auth.token || await AsyncStorage.getItem('auth_token');
             if (!token) return rejectWithValue('No auth token found');
             const response = await fetch(`${API_BASE_URL}/api/v1/broker/kyc`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
+            if (response.status === 401) {
+                dispatch(logout());
+                return rejectWithValue('Unauthorized');
+            }
             if (response.status === 404) return null;
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
@@ -246,13 +250,17 @@ export const fetchKyc = createAsyncThunk(
 // Fetch user profile
 export const fetchUserProfile = createAsyncThunk(
     'auth/fetchProfile',
-    async (_, { getState, rejectWithValue }) => {
+    async (_, { getState, dispatch, rejectWithValue }) => {
         try {
             const token = getState().auth.token || await AsyncStorage.getItem('auth_token');
             if (!token) return rejectWithValue('No auth token found');
             const response = await fetch(`${API_BASE_URL}/api/v1/profile/me`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
+            if (response.status === 401) {
+                dispatch(logout());
+                return rejectWithValue('Unauthorized');
+            }
             const data = await response.json();
             if (!response.ok) return rejectWithValue(data.message);
             return data.data;

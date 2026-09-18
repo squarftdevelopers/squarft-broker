@@ -94,7 +94,11 @@ export const fetchMyAddedProperties = createAsyncThunk(
         try {
             const token = getState().auth.token;
             const hasFilters = Object.values(filters || {}).some(value => String(value || '').trim() !== '');
-            const url = `${API_BASE_URL}/api/v1/broker/properties`;
+            const query = new URLSearchParams();
+            Object.entries(filters || {}).forEach(([key, value]) => {
+                if (value !== undefined && value !== null && String(value).trim() !== '') query.set(key, String(value));
+            });
+            const url = `${API_BASE_URL}/api/v1/broker/properties${query.toString() ? `?${query.toString()}` : ''}`;
             
             // Single endpoint returns both properties (created via new form) and projects
             // Properties: filtered by created_by = brokerId

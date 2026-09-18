@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
-import { View, Text, Pressable, ScrollView, StatusBar, TextInput, Alert, RefreshControl } from 'react-native';
+import { View, Text, Pressable, ScrollView, StatusBar, TextInput, Alert, RefreshControl, ActivityIndicator, Animated } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -7,15 +7,38 @@ import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/
 import { fetchWalletOverview, fetchBankAccounts, fetchTransactions, requestWithdrawalApi } from '../../store/slices/walletSlice';
 import * as Clipboard from 'expo-clipboard';
 
+// Skeleton pulse component for loading states
+const SkeletonBox = ({ width, height, borderRadius = 8, style }) => {
+    const opacity = useRef(new Animated.Value(0.4)).current;
+    useEffect(() => {
+        const anim = Animated.loop(
+            Animated.sequence([
+                Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
+                Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+            ])
+        );
+        anim.start();
+        return () => anim.stop();
+    }, [opacity]);
+    return (
+        <Animated.View
+            style={[{ width, height, borderRadius, backgroundColor: 'rgba(255,255,255,0.3)', opacity }, style]}
+        />
+    );
+};
+
 const WalletScreen = () => {
     const router = useRouter();
     const { withdraw } = useLocalSearchParams();
     const dispatch = useDispatch();
-    const { balance, bankAccounts, transactions } = useSelector((state) => state.wallet);
+    const { balance, bankAccounts, transactions, loading: walletLoading } = useSelector((state) => state.wallet);
     const [refreshing, setRefreshing] = useState(false);
-    
+    const [overviewLoading, setOverviewLoading] = useState(true);
+    const [txLoading, setTxLoading] = useState(true);
+
     // States for view toggle and withdraw form
     const [isWithdrawMode, setIsWithdrawMode] = useState(false);
+    const [isWithdrawing, setIsWithdrawing] = useState(false);
 
     const onRefresh = async () => {
         setRefreshing(true);
@@ -31,9 +54,13 @@ const WalletScreen = () => {
     };
 
     useEffect(() => {
-        dispatch(fetchWalletOverview());
-        dispatch(fetchBankAccounts());
-        dispatch(fetchTransactions({ limit: 5 }));
+        setOverviewLoading(true);
+        setTxLoading(true);
+        Promise.allSettled([
+            dispatch(fetchWalletOverview()),
+            dispatch(fetchBankAccounts()),
+        ]).finally(() => setOverviewLoading(false));
+        dispatch(fetchTransactions({ limit: 5 })).finally(() => setTxLoading(false));
         if (withdraw === 'true') {
             setIsWithdrawMode(true);
         }
@@ -70,6 +97,7 @@ const WalletScreen = () => {
     );
 
     const handleWithdraw = async () => {
+        if (isWithdrawing) return;
         if (!amount || isNaN(parseFloat(amount))) return;
         if (parseFloat(amount) > balance) {
             Alert.alert("Error", "Insufficient balance");
@@ -85,12 +113,17 @@ const WalletScreen = () => {
         }
 
         try {
+            setIsWithdrawing(true);
             await dispatch(requestWithdrawalApi({ amount: Number(amount) })).unwrap();
             setAmount('');
             setIsWithdrawMode(false);
+            dispatch(fetchWalletOverview());
+            dispatch(fetchTransactions({ limit: 5 }));
             Alert.alert("Success", `₹${amount} withdrawal initiated successfully`);
         } catch (err) {
             Alert.alert("Error", err || "Withdrawal failed");
+        } finally {
+            setIsWithdrawing(false);
         }
     };
 
@@ -138,9 +171,17 @@ const WalletScreen = () => {
                     }}
                 >
                     <Text className="text-blue-100 text-center text-[11px] font-manrope-medium mb-0.5">Main balance</Text>
-                    <Text className="text-white text-center text-[26px] font-manrope-extrabold mb-5">
-                        ₹{balance?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                    </Text>
+
+                    {/* Balance amount — skeleton while loading, real value once ready */}
+                    {overviewLoading ? (
+                        <View className="items-center mb-5">
+                            <SkeletonBox width={140} height={34} borderRadius={10} style={{ marginBottom: 0 }} />
+                        </View>
+                    ) : (
+                        <Text className="text-white text-center text-[26px] font-manrope-extrabold mb-5">
+                            ₹{balance?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </Text>
+                    )}
 
                     {!isWithdrawMode && (
                         <View className="flex-row justify-between items-center px-4">
@@ -205,24 +246,39 @@ const WalletScreen = () => {
                             />
                         }
                     >
-                        {transactions.map((item) => (
-                            <Pressable
-                                key={item.id}
-                                onPress={() => handlePresentModalPress(item)}
-                                className="flex-row items-center justify-between py-3 border-b border-gray-100"
-                            >
-                                <View>
-                                    <Text className="text-[13px] font-manrope-bold text-[#272727]">{item.property_name || 'Commission'}</Text>
-                                    <Text className="text-[9px] text-gray-400 font-manrope-medium mt-1">{formatDate(item.created_at)}</Text>
-                                </View>
-                                <View className="flex-row items-center">
-                                    <Text className={`${item.type === 'credit' ? 'text-[#22C55E]' : 'text-[#EF4444]'} text-[13px] font-manrope-bold mr-2`}>
-                                        {item.type === 'credit' ? '+' : '-'}₹{Number(item.amount).toLocaleString('en-IN')}
-                                    </Text>
-                                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-                                </View>
-                            </Pressable>
-                        ))}
+                        {/* Transactions section — spinner inside the list area while loading */}
+                        {txLoading ? (
+                            <View className="items-center justify-center py-10">
+                                <ActivityIndicator size="small" color="#4A43EC" />
+                                <Text className="text-gray-400 text-[11px] font-manrope-medium mt-2">Loading transactions…</Text>
+                            </View>
+                        ) : transactions.length === 0 ? (
+                            <View className="items-center justify-center py-10">
+                                <MaterialCommunityIcons name="receipt" size={32} color="#D1D5DB" />
+                                <Text className="text-gray-400 text-[12px] font-manrope-medium mt-2">No transactions yet</Text>
+                            </View>
+                        ) : (
+                            transactions.map((item) => (
+                                <Pressable
+                                    key={item.id}
+                                    onPress={() => handlePresentModalPress(item)}
+                                    className="flex-row items-center justify-between py-3 border-b border-gray-100"
+                                >
+                                    <View>
+                                        <Text className="text-[13px] font-manrope-bold text-[#272727]">
+                                            {item.property_name || (item.type === 'debit' ? 'Bank Withdrawal' : 'Commission Earned')}
+                                        </Text>
+                                        <Text className="text-[9px] text-gray-400 font-manrope-medium mt-1">{formatDate(item.created_at)}</Text>
+                                    </View>
+                                    <View className="flex-row items-center">
+                                        <Text className={`${item.type === 'credit' ? 'text-[#22C55E]' : 'text-[#EF4444]'} text-[13px] font-manrope-bold mr-2`}>
+                                            {item.type === 'credit' ? '+' : '-'}₹{Number(item.amount).toLocaleString('en-IN')}
+                                        </Text>
+                                        <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+                                    </View>
+                                </Pressable>
+                            ))
+                        )}
                     </ScrollView>
                 </View>
             ) : (
@@ -291,9 +347,14 @@ const WalletScreen = () => {
                     {amount !== '' && (
                         <Pressable
                             onPress={handleWithdraw}
-                            className="bg-[#4A43EC] py-4 rounded-xl items-center justify-center mt-8 mb-10"
+                            disabled={isWithdrawing}
+                            className={`bg-[#4A43EC] py-4 rounded-xl items-center justify-center mt-8 mb-10 flex-row ${isWithdrawing ? 'opacity-70' : ''}`}
                         >
-                            <Text className="text-white text-[16px] font-manrope-bold">Withdraw Now</Text>
+                            {isWithdrawing ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                                <Text className="text-white text-[16px] font-manrope-bold">Withdraw Now</Text>
+                            )}
                         </Pressable>
                     )}
                 </ScrollView>
@@ -316,23 +377,37 @@ const WalletScreen = () => {
             >
                 <BottomSheetView className="flex-1 px-6 pt-5">
                     <View className="flex-row items-center justify-between mb-1">
-                        <Text className="text-[15px] font-manrope-extrabold text-[#272727]">{selectedTransaction?.property_name || 'Commission'}</Text>
+                        <Text className="text-[15px] font-manrope-extrabold text-[#272727]">
+                            {selectedTransaction?.property_name || (selectedTransaction?.type === 'debit' ? 'Bank Withdrawal' : 'Commission Earned')}
+                        </Text>
                     </View>
-                    <Text className="text-gray-400 font-manrope-medium mb-5 text-[11px]">{selectedTransaction?.type === 'credit' ? 'Earned from property sale' : 'Withdrawal to bank'}</Text>
+                    <Text className="text-gray-400 font-manrope-medium mb-5 text-[11px]">
+                        {selectedTransaction?.location || (selectedTransaction?.type === 'credit' ? 'Earned from property deal' : 'Withdrawal to bank')}
+                    </Text>
 
-                    <View className="bg-[#E8F9EE] rounded-[12px] py-3 items-center mb-5">
-                        <Text className="text-[#22C55E] text-[20px] font-manrope-extrabold">₹{Number(selectedTransaction?.amount).toLocaleString('en-IN')}</Text>
+                    <View className={`${selectedTransaction?.type === 'debit' ? 'bg-red-50' : 'bg-[#E8F9EE]'} rounded-[12px] py-3 items-center mb-5`}>
+                        <Text className={`${selectedTransaction?.type === 'debit' ? 'text-[#EF4444]' : 'text-[#22C55E]'} text-[20px] font-manrope-extrabold`}>
+                            {selectedTransaction?.type === 'debit' ? '-' : '+'}₹{Number(selectedTransaction?.amount).toLocaleString('en-IN')}
+                        </Text>
                     </View>
 
                     <View className="bg-white border border-gray-100 rounded-[14px] p-3.5 mb-3.5" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 5 }}>
-                        <Text className="text-gray-400 text-[9px] font-manrope-medium mb-1 uppercase tracking-wider">Transfer to</Text>
-                        <Text className="text-[#272727] text-[13px] font-manrope-bold">{selectedTransaction?.bank_name || 'N/A'}</Text>
+                        <Text className="text-gray-400 text-[9px] font-manrope-medium mb-1 uppercase tracking-wider">
+                            {selectedTransaction?.type === 'debit' ? 'Transferred to' : 'Details'}
+                        </Text>
+                        <Text className="text-[#272727] text-[13px] font-manrope-bold">
+                            {selectedTransaction?.bank_name || selectedTransaction?.transfer_to_details || selectedTransaction?.property_address || (selectedTransaction?.type === 'debit' ? 'Bank Account' : 'Wallet Main Balance')}
+                        </Text>
                     </View>
 
                     <View className="bg-white border border-gray-100 rounded-[14px] p-3.5 flex-row items-center justify-between" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 5 }}>
                         <View>
-                            <Text className="text-gray-400 text-[9px] font-manrope-medium mb-1 uppercase tracking-wider">Transaction no.</Text>
-                            <Text className="text-[#272727] text-[13px] font-manrope-bold">{selectedTransaction?.id?.toString().slice(0, 8)}...</Text>
+                            <Text className="text-gray-400 text-[9px] font-manrope-medium mb-1 uppercase tracking-wider">
+                                {selectedTransaction?.utr ? 'UTR / Ref No.' : 'Transaction no.'}
+                            </Text>
+                            <Text className="text-[#272727] text-[13px] font-manrope-bold">
+                                {selectedTransaction?.utr || selectedTransaction?.transactionNo || (selectedTransaction?.id ? selectedTransaction.id.toString().slice(0, 8) + '...' : 'N/A')}
+                            </Text>
                         </View>
                         <Pressable
                             onPress={handleCopyTransaction}

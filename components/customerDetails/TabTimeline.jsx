@@ -1,9 +1,10 @@
-import { View, Text, Image, ActivityIndicator } from 'react-native';
+import { View, Text, Image, ActivityIndicator, Pressable } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { memo, useEffect, useMemo } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchRequirementTimeline } from '../../store/slices/requirementsSlice';
 import TimelineItem from './TimelineItem';
+import ImageLightbox from '../ImageLightbox';
 
 const formatTimelineDate = (value) => value
     ? new Date(value).toLocaleString('en-IN', {
@@ -26,6 +27,8 @@ const STAGES = [
 const TabTimeline = memo(function TabTimeline({ requirementId }) {
     const dispatch = useDispatch();
     const { timeline, timelineLoading, timelineError } = useSelector((state) => state.requirements);
+    const [galleryImages, setGalleryImages] = useState([]);
+    const [galleryStartIndex, setGalleryStartIndex] = useState(0);
 
     const stages = useMemo(() => STAGES.map((stage, index) => {
         const event = timeline.find((item) => item.event_type === stage.event_type);
@@ -77,12 +80,14 @@ const TabTimeline = memo(function TabTimeline({ requirementId }) {
                         {item.metadata?.images?.length > 0 && (
                             <View className="flex-row gap-2 mt-2 mb-1">
                                 {item.metadata.images.map((img, idx) => (
-                                    <Image key={idx} source={{ uri: img }} className="w-[36px] h-[36px] rounded-[8px]" />
+                                    <Pressable key={idx} onPress={() => { setGalleryImages(item.metadata.images); setGalleryStartIndex(idx); }}>
+                                        <Image source={{ uri: img }} className="w-[36px] h-[36px] rounded-[8px]" />
+                                    </Pressable>
                                 ))}
                                 {item.metadata.extra_images_count > 0 && (
-                                    <View className="w-[36px] h-[36px] bg-[#F3F4F6] rounded-[8px] justify-center items-center">
+                                    <Pressable onPress={() => { setGalleryImages(item.metadata.images); setGalleryStartIndex(0); }} className="w-[36px] h-[36px] bg-[#F3F4F6] rounded-[8px] justify-center items-center">
                                         <Text className="text-[10px] font-manrope-semibold text-[#4B5563]">+{item.metadata.extra_images_count}</Text>
-                                    </View>
+                                    </Pressable>
                                 )}
                             </View>
                         )}
@@ -114,6 +119,7 @@ const TabTimeline = memo(function TabTimeline({ requirementId }) {
                     </TimelineItem>
                 ))}
             </View>
+            <ImageLightbox visible={galleryImages.length > 0} images={galleryImages} startIndex={galleryStartIndex} onClose={() => setGalleryImages([])} />
         </View>
     );
 });

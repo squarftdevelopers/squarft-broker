@@ -1,17 +1,10 @@
-import { View, Text, Image, Pressable } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
+import DynamicPropertyImage from './DynamicPropertyImage';
 
 const PropertyCard = ({ item, propertyTypeLabel, onPress }) => {
     // Handle different image formats
-    const imageSource = item.image 
-        ? item.image 
-        : item.cover_image 
-        ? { uri: item.cover_image }
-        : item.cover_image_url
-        ? { uri: item.cover_image_url }
-        : item.media?.find(m => m.is_cover)?.url
-        ? { uri: item.media.find(m => m.is_cover).url }
-        : require('../../assets/images/Image.png'); // fallback image
+    const imageUri = item.cover_image || item.cover_image_url || item.media?.find(m => m.is_cover)?.url || item.media?.find(m => m.url)?.url || null;
 
     // Handle title
     const title = item.title || item.name || 'Property';
@@ -38,9 +31,6 @@ const PropertyCard = ({ item, propertyTypeLabel, onPress }) => {
         // Fallback for any other custom string the backend might pass (e.g., "In Review")
         status = item.approval_status; 
     }
-    
-    // Handle views - check multiple possible fields
-    const views = item.views || item.view_count || item.total_views || item.users_seen_count || item.seen_count || item.unique_view_count || 0;
 
     return (
         <Pressable
@@ -60,15 +50,7 @@ const PropertyCard = ({ item, propertyTypeLabel, onPress }) => {
                 }}
             >
                 <View className="relative">
-                    <Image
-                        source={imageSource}
-                        className="w-full h-[140px] rounded-[30px] border border-gray-100"
-                        resizeMode="cover"
-                    />
-                    <View className="absolute top-3 right-3 flex-row items-center bg-white/95 px-2 py-0.5 rounded-full shadow-sm">
-                        <Ionicons name="eye" size={12} color="black" />
-                        <Text className="text-black text-[10px] ml-1 font-lato-bold">{views}</Text>
-                    </View>
+                    <DynamicPropertyImage uri={imageUri} style={{ width: "100%", height: 140, borderRadius: 30, borderWidth: 1, borderColor: "#F3F4F6" }} label="No property image" />
                 </View>
 
                 <View className="px-1 py-2.5">

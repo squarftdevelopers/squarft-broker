@@ -13,7 +13,10 @@ import {
   BottomSheetScrollView,
   BottomSheetBackdrop,
 } from "@gorhom/bottom-sheet";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ZoomableImage from "./ZoomableImage";
+import DynamicPropertyImage from "./DynamicPropertyImage";
+import ImageLightbox from "../ImageLightbox";
 import { formatTextValue, formatReraStatus, firstValue } from "../../utils/propertyHelpers";
 
 const naksha = require("../../assets/images/building_naksha.png");
@@ -21,33 +24,60 @@ const naksha = require("../../assets/images/building_naksha.png");
 const { width } = Dimensions.get("window");
 
 const AMENITY_ICONS = {
-  Gymnasium: { icon: "dumbbell", color: "#4A43EC" },
-  "Swimming Pool": { icon: "pool", color: "#4A43EC" },
-  "24/7 Security": { icon: "shield-check-outline", color: "#4A43EC" },
-  "Power Backup": { icon: "lightning-bolt", color: "#4A43EC" },
-  Landscaping: { icon: "tree-outline", color: "#4A43EC" },
-  "Car Parking": { icon: "car-outline", color: "#4A43EC" },
-  "Sports Court": { icon: "tennis", color: "#4A43EC" },
-  "Wi-Fi Zone": { icon: "wifi", color: "#4A43EC" },
-  Clubhouse: { icon: "home-group", color: "#4A43EC" },
-  Garden: { icon: "flower-outline", color: "#4A43EC" },
+  Gymnasium: { icon: "dumbbell", color: "#0645A5" },
+  "Swimming Pool": { icon: "pool", color: "#0645A5" },
+  "24/7 Security": { icon: "shield-check-outline", color: "#0645A5" },
+  "Power Backup": { icon: "lightning-bolt", color: "#0645A5" },
+  Landscaping: { icon: "tree-outline", color: "#0645A5" },
+  "Car Parking": { icon: "car-outline", color: "#0645A5" },
+  Parking: { icon: "car-outline", color: "#0645A5" },
+  "Sports Court": { icon: "tennis", color: "#0645A5" },
+  "Wi-Fi Zone": { icon: "wifi", color: "#0645A5" },
+  Clubhouse: { icon: "home-group", color: "#0645A5" },
+  Garden: { icon: "flower-outline", color: "#0645A5" },
+  Lift: { icon: "elevator", color: "#0645A5" },
+  Elevator: { icon: "elevator", color: "#0645A5" },
+  "Children Play Area": { icon: "toy-brick-outline", color: "#0645A5" },
+  "Kids Play Area": { icon: "toy-brick-outline", color: "#0645A5" },
 };
 
+function getAmenityConfig(label) {
+  if (!label) return { icon: "star-outline", color: "#0645A5" };
+  const direct = AMENITY_ICONS[label];
+  if (direct) return direct;
+
+  const lower = String(label).toLowerCase().trim();
+  if (lower.includes("swim") || lower.includes("pool")) return { icon: "pool", color: "#0645A5" };
+  if (lower.includes("gym") || lower.includes("fitness")) return { icon: "dumbbell", color: "#0645A5" };
+  if (lower.includes("secur") || lower.includes("guard") || lower.includes("cctv")) return { icon: "shield-check-outline", color: "#0645A5" };
+  if (lower.includes("park") || lower.includes("car")) return { icon: "car-outline", color: "#0645A5" };
+  if (lower.includes("power") || lower.includes("backup") || lower.includes("generator")) return { icon: "lightning-bolt", color: "#0645A5" };
+  if (lower.includes("garden") || lower.includes("plant") || lower.includes("flower")) return { icon: "flower-outline", color: "#0645A5" };
+  if (lower.includes("club")) return { icon: "home-group", color: "#0645A5" };
+  if (lower.includes("lift") || lower.includes("elevator")) return { icon: "elevator", color: "#0645A5" };
+  if (lower.includes("play") || lower.includes("kid") || lower.includes("child")) return { icon: "toy-brick-outline", color: "#0645A5" };
+  if (lower.includes("wifi") || lower.includes("wi-fi") || lower.includes("internet")) return { icon: "wifi", color: "#0645A5" };
+  if (lower.includes("court") || lower.includes("sport") || lower.includes("tennis")) return { icon: "tennis", color: "#0645A5" };
+  if (lower.includes("landscap") || lower.includes("tree")) return { icon: "tree-outline", color: "#0645A5" };
+
+  return { icon: "star-outline", color: "#0645A5" };
+}
+
 function AmenityItem({ label }) {
-  const config = AMENITY_ICONS[label] ?? {
-    icon: "star-outline",
-    color: "#4A43EC",
-  };
+  const config = getAmenityConfig(label);
   return (
-    <View className="flex-row items-center gap-3 w-[50%] mb-4">
-      <View className="w-10 h-10 rounded-[14px] bg-[#F1F3FF] items-center justify-center">
+    <View className="flex-row items-center gap-2.5 w-[50%] mb-3.5 pr-2">
+      <View className="w-10 h-10 rounded-[12px] bg-[#F1F3FF] items-center justify-center">
         <MaterialCommunityIcons
           name={config.icon}
-          size={18}
-          color={config.color}
+          size={20}
+          color={config.color || "#0645A5"}
         />
       </View>
-      <Text className="text-[13px] font-manrope-medium text-[#101010] flex-1">
+      <Text
+        numberOfLines={2}
+        className="text-[13px] font-manrope-medium text-[#0B2855] flex-1 leading-[17px]"
+      >
         {label}
       </Text>
     </View>
@@ -93,46 +123,92 @@ const getInitials = (name) => {
   return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
 };
 
+const DEAL_STAGES = [
+  { key: 'deal_created',      label: 'Deal Created',       icon: 'handshake-outline' },
+  { key: 'meetings_notes',    label: 'Meetings & Notes',   icon: 'text-box-outline' },
+  { key: 'token',             label: 'Token Amount',       icon: 'cash-check' },
+  { key: 'payment_schedule',  label: 'Payment Schedule',   icon: 'calendar-check-outline' },
+  { key: 'payment_history',   label: 'Payment History',    icon: 'receipt' },
+  { key: 'documents',         label: 'Documents',          icon: 'file-document-outline' },
+  { key: 'timeline',          label: 'Timeline',           icon: 'timeline-clock-outline' },
+];
+
 const getFollowUpStyles = (status) => {
   const normalized = String(status || "").toLowerCase();
-  if (normalized.includes("visit") || normalized.includes("pending")) {
-    return { statusColor: "#FE8A71", statusBg: "#FFF1EF" };
-  }
+  if (normalized.includes("cancel")) return { statusColor: "#B42318", statusBg: "#FFF1EF" };
+  if (normalized.includes("paid") || normalized.includes("complet")) return { statusColor: "#027A48", statusBg: "#ECFDF3" };
+  if (normalized.includes("pending") || normalized.includes("visit")) return { statusColor: "#B54708", statusBg: "#FFFAEB" };
   return { statusColor: "#4A43EC", statusBg: "#F1F3FF" };
 };
 
 const normalizeFollowUps = (item) => {
-  const raw = firstValue(item, [
-    "follow_ups"
-  ]);
-
+  const raw = firstValue(item, ["follow_ups"]);
   if (!Array.isArray(raw)) return [];
 
   return raw.map((followUp, index) => {
-    const customerName = firstValue(followUp, [
-      "customer_name",
-   
-    ]) || "Customer";
-    const salesOfficer = firstValue(followUp, [
-      "sales_officer",
-
-    ]) || "Unassigned";
-    const status = firstValue(followUp, ["status", "stage", "lead_status"]) || "Follow Up";
+    const customerName = followUp.customer_name || "Customer";
+    const salesOfficer = followUp.sales_officer || "Unassigned";
+    const status = followUp.status || "Follow Up";
     const styles = getFollowUpStyles(status);
+    const stageIndex = typeof followUp.current_stage_index === 'number'
+      ? followUp.current_stage_index
+      : 0;
 
     return {
-      id: firstValue(followUp, ["id", "follow_up_id", "lead_id"]) || String(index),
+      id: followUp.id || String(index),
       status,
-      statusColor: followUp.statusColor || followUp.status_color || styles.statusColor,
-      statusBg: followUp.statusBg || followUp.status_bg || styles.statusBg,
-      unit: firstValue(followUp, ["unit", "unit_no", "unit_number", "property_unit"]) || "Unit not set",
+      statusColor: styles.statusColor,
+      statusBg: styles.statusBg,
+      unit: followUp.unit || "Unit not set",
       customerName,
-      nextEvent: firstValue(followUp, [
-        "next_event",
-
-      ]) || "Next action not set",
+      nextEvent: followUp.next_event || null,
       salesOfficer,
-      officerInitials: firstValue(followUp, ["officerInitials", "officer_initials"]) || getInitials(salesOfficer),
+      officerInitials: getInitials(salesOfficer),
+      currentStageIndex: stageIndex,
+      dealValue: followUp.deal_value || null,
+      bookingDate: followUp.booking_date || null,
+    };
+  });
+};
+
+const normalizeVisits = (item) => {
+  const raw = item?.property_visits;
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map((v, i) => {
+    const slotStart = v.slot_start ? new Date(v.slot_start) : null;
+    const now = new Date();
+    const isUpcoming = slotStart ? slotStart > now : false;
+    const status = String(v.status || '').toLowerCase();
+    let statusLabel = v.status || 'Scheduled';
+    let statusColor = '#4A43EC';
+    let statusBg = '#F1F3FF';
+    if (status === 'completed') { statusColor = '#027A48'; statusBg = '#ECFDF3'; statusLabel = 'Completed'; }
+    else if (status === 'cancelled') { statusColor = '#B42318'; statusBg = '#FFF1EF'; statusLabel = 'Cancelled'; }
+    else if (status === 'confirmed') { statusColor = '#027A48'; statusBg = '#ECFDF3'; statusLabel = 'Confirmed'; }
+    else if (status === 'pending') { statusColor = '#B54708'; statusBg = '#FFFAEB'; statusLabel = 'Pending'; }
+    else if (status === 'rescheduled') { statusColor = '#6941C6'; statusBg = '#F9F5FF'; statusLabel = 'Rescheduled'; }
+
+    const formatSlot = (d) => {
+      if (!d) return null;
+      const date = new Date(d);
+      return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) +
+        ' · ' + date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    };
+
+    return {
+      id: v.id || String(i),
+      isUpcoming,
+      statusLabel,
+      statusColor,
+      statusBg,
+      customerName: v.customer_name || 'Customer',
+      customerPhone: v.customer_phone || null,
+      salesOfficer: v.sales_officer || 'Unassigned',
+      officerInitials: getInitials(v.sales_officer),
+      slotDisplay: formatSlot(v.slot_start),
+      leadTemperature: v.lead_temperature || null,
+      note: v.officer_note || v.user_note || null,
     };
   });
 };
@@ -145,10 +221,15 @@ export default function PropertyDetailSheet({
   error = null,
 }) {
   const bottomSheetModalRef = useRef(null);
-  const snapPoints = useMemo(() => ["99%"], []);
+  const insets = useSafeAreaInsets();
+  // A listing without project amenities has substantially less content. Keep the
+  // sheet compact in that case while retaining a scrollable body and fixed tabs.
+  const compactSheet = Boolean(item) && !loading && normalizeAmenities(item).length === 0;
+  const snapPoints = useMemo(() => [compactSheet ? "78%" : "99%"], [compactSheet]);
   
   const floorPlanVisible = false;
   const [zoomVisible, setZoomVisible] = useState(false);
+  const [galleryVisible, setGalleryVisible] = useState(false);
   const [activeTab, setActiveTab] = useState("detail"); 
 
   useEffect(() => {
@@ -181,7 +262,10 @@ export default function PropertyDetailSheet({
 
   const amenitiesList = normalizeAmenities(item);
   const followUps = normalizeFollowUps(item);
-  
+  const visits = normalizeVisits(item);
+  const upcomingVisits = visits.filter(v => v.isUpcoming && v.statusLabel !== 'Cancelled' && v.statusLabel !== 'Completed');
+  const pastVisits = visits.filter(v => !v.isUpcoming || v.statusLabel === 'Completed' || v.statusLabel === 'Cancelled');
+
   // Get category to determine if residential or commercial
   const category = String(firstValue(item, ["category", "type", "property_category"]) || "").toLowerCase();
   const isResidential = category.includes("residential");
@@ -261,57 +345,41 @@ export default function PropertyDetailSheet({
     "total_area_sqft",
   ]);
 
-  // Handle different price formats from API
+  // Handle different price formats from API - show exact price without conversion or units
   const getFormattedPrice = () => {
-    if (item.price && typeof item.price === 'number') {
-      return `₹${item.price.toLocaleString("en-IN")}/m`;
+    const rawPrice = item.selling_price ?? item.price ?? item.base_price ?? item.price_from ?? item.min_price;
+    const priceFrom = item.price_from || item.min_price;
+    const priceTo = item.price_to || item.max_price;
+
+    const formatExact = (val) => {
+      if (val === undefined || val === null || val === "") return "";
+      const cleaned = String(val).replace(/[^\d.]/g, "").trim();
+      const num = Number(cleaned);
+      if (Number.isFinite(num) && num > 0) {
+        return `\u20B9${num.toLocaleString("en-IN")}`;
+      }
+      return cleaned ? `\u20B9${cleaned}` : "";
+    };
+
+    if (priceFrom && priceTo && Number(String(priceTo).replace(/[^\d.]/g, "")) > Number(String(priceFrom).replace(/[^\d.]/g, ""))) {
+      return `${formatExact(priceFrom)} - ${formatExact(priceTo)}`;
     }
-    
-    // Use base_price as fallback if min_price/max_price are not set
-    const basePrice = item.base_price || 0;
-    const priceFrom = item.price_from || item.min_price || basePrice;
-    const priceTo = item.price_to || item.max_price || basePrice;
-    
-    // Check for range pricing
-    if (priceTo > priceFrom) {
-      return `₹${(priceFrom / 100000).toFixed(2)}L - ₹${(priceTo / 100000).toFixed(2)}L`;
+
+    if (rawPrice !== undefined && rawPrice !== null && rawPrice !== "" && rawPrice !== 0 && rawPrice !== "0") {
+      return formatExact(rawPrice);
     }
-    // Single price value
-    if (basePrice > 0) {
-      return `₹${(basePrice / 100000).toFixed(2)}L`;
-    }
-    return 'Price on request';
+
+    return "Price on request";
   };
 
   const priceFormatted = getFormattedPrice();
 
-  // Get image source - handle both dummy data and API data
-  const getImageSource = () => {
-    // If item.image is already a require() object (dummy data)
-    if (item.image && typeof item.image === 'number') {
-      return item.image;
-    }
-    // If item has media array (API data)
-    if (item.media && item.media.length > 0) {
-      const coverImage = item.media.find(m => m.is_cover && m.media_type === 'image');
-      if (coverImage) return { uri: coverImage.url };
-      const firstImage = item.media.find(m => m.media_type === 'image');
-      if (firstImage) return { uri: firstImage.url };
-    }
-    // If item has cover_image_url (API data)
-    if (item.cover_image_url) {
-      return { uri: item.cover_image_url };
-    }
-    // Fallback to item.image if it's a URI string
-    if (item.image && typeof item.image === 'string') {
-      return { uri: item.image };
-    }
-    // Default fallback
-    return item.image || require("../../assets/images/home/hero.png");
-  };
-
-  const imageSource = getImageSource();
-
+  const propertyImages = (Array.isArray(item.media) ? item.media : [])
+    .filter((media) => media.media_type === "image" && media.url)
+    .sort((a, b) => Number(b.is_cover) - Number(a.is_cover) || Number(a.sort_order || 0) - Number(b.sort_order || 0));
+  const primaryImage = propertyImages[0]?.url || item.cover_image_url || (typeof item.image === "string" ? item.image : null);
+  const secondaryImage = propertyImages[1]?.url || null;
+  const locationLabel = [item.address, item.city, item.state, item.pincode].filter(Boolean).join(", ");
   return (
     <>
       <BottomSheetModal
@@ -337,8 +405,8 @@ export default function PropertyDetailSheet({
           {activeTab === "detail" ? (
             <BottomSheetScrollView
               showsVerticalScrollIndicator={false}
-              className="mx-5 rounded-2xl mb-14 border border-gray-300"
-              contentContainerStyle={{ paddingBottom: 16 }}
+              className="mx-5 mb-2"
+              contentContainerStyle={{ paddingBottom: 108 + insets.bottom }}
             >
               {error ? (
                 <View className="mx-4 mt-4 rounded-2xl bg-[#FFF1EF] border border-[#FFD7CF] px-4 py-3">
@@ -348,20 +416,12 @@ export default function PropertyDetailSheet({
               ) : null}
 
               {/* Hero Image Section */}
-              <View style={{ height: 145, overflow: "hidden" }}>
+              <TouchableOpacity activeOpacity={0.94} disabled={!primaryImage} onPress={() => setGalleryVisible(true)} style={{ height: 145, overflow: "hidden" }}>
                 <View style={{ flex: 1, flexDirection: "row" }}>
-                  <Image
-                    source={imageSource}
-                    style={{ flex: 1.4, height: 145 }}
-                    resizeMode="cover"
-                  />
+                  <DynamicPropertyImage uri={primaryImage} style={{ flex: 1.4, height: 145 }} label="No image uploaded" />
                   <View style={{ width: 2, backgroundColor: "#fff" }} />
                   <View style={{ flex: 1, height: 145, position: "relative" }}>
-                    <Image
-                      source={imageSource}
-                      style={{ width: "100%", height: "100%", opacity: 0.9 }}
-                      resizeMode="cover"
-                    />
+                    <DynamicPropertyImage uri={secondaryImage || primaryImage} style={{ width: "100%", height: "100%" }} imageStyle={{ opacity: 0.9 }} label="No image" />
                     <View
                       style={{
                         position: "absolute",
@@ -373,7 +433,7 @@ export default function PropertyDetailSheet({
                         paddingVertical: 2,
                       }}
                     >
-                      <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>1/8</Text>
+                      <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>{propertyImages.length || (primaryImage ? 1 : 0)} photos</Text>
                     </View>
                   </View>
                 </View>
@@ -413,11 +473,11 @@ export default function PropertyDetailSheet({
                 >
             
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
 
               {/* Header Details */}
               <View className="flex-row items-center gap-5 mx-5 mt-3 mb-3.5">
-                <Text className="text-[12px] font-manrope-regular text-gray-500">Possession: Immediate</Text>
+                <Text className="text-[12px] font-manrope-regular text-gray-500" numberOfLines={1}>{locationLabel || "Location not provided"}</Text>
                 <Text className="text-[12px] font-manrope-regular text-gray-500">• Status: {item.status || "Active"}</Text>
               </View>
 
@@ -467,28 +527,22 @@ export default function PropertyDetailSheet({
               </View>
 
               {/* Amenities Section */}
-              <View className="mx-4 bg-white border border-gray-100 rounded-2xl p-4 px-5 mb-2">
-                <Text className="text-[15px] font-manrope-regular text-[#1A1A1A] mb-4">World-Class Amenities</Text>
-                {loading ? (
-                  <View className="py-5 items-center">
-                    <ActivityIndicator size="small" color="#4A43EC" />
-                  </View>
-                ) : amenitiesList.length > 0 ? (
-                  <View className="flex-row flex-wrap">
-                    {amenitiesList.map((a, i) => (
-                      <AmenityItem key={`${a}-${i}`} label={a} />
-                    ))}
-                  </View>
-                ) : (
-                  <Text className="text-[12px] font-manrope-medium text-gray-400">No amenities added from admin yet.</Text>
-                )}
+              {!loading && amenitiesList.length > 0 ? (
+              <View className="mx-4 bg-white border border-[#E0E8FF] rounded-2xl p-4 px-4.5 mb-3">
+                <Text className="text-[15px] font-manrope-bold text-[#0B2855] mb-3.5">World-Class Amenities</Text>
+                <View className="flex-row flex-wrap">
+                  {amenitiesList.map((a, i) => (
+                    <AmenityItem key={`${a}-${i}`} label={a} />
+                  ))}
+                </View>
               </View>
+              ) : null}
             </BottomSheetScrollView>
           ) : (
             <BottomSheetScrollView
               showsVerticalScrollIndicator={false}
               className="mx-5 mb-5"
-              contentContainerStyle={{ paddingBottom: 20 }}
+              contentContainerStyle={{ paddingBottom: 108 + insets.bottom }}
             >
               {error ? (
                 <View className="py-10 items-center px-6">
@@ -499,48 +553,181 @@ export default function PropertyDetailSheet({
               ) : loading ? (
                 <View className="py-10 items-center">
                   <ActivityIndicator size="small" color="#4A43EC" />
-                  <Text className="text-[12px] font-manrope-medium text-gray-400 mt-3">Loading follow ups...</Text>
+                  <Text className="text-[12px] font-manrope-medium text-gray-400 mt-3">Loading...</Text>
                 </View>
-              ) : followUps.length > 0 ? (
-                followUps.map((f) => (
-                  <View key={f.id} className="bg-white border border-gray-100 rounded-[18px] p-4 mb-3" style={{ elevation: 1, shadowColor: '#8d8c8cff', shadowOpacity: 0.03, shadowRadius: 2 }}>
-                    <View className="flex-row items-center justify-between mb-2">
-                      <View className="flex-row items-center gap-2">
-                        <View className="px-2.5 py-0.5 rounded-full" style={{ backgroundColor: f.statusBg }}>
-                          <Text className="text-[9px] font-manrope-bold" style={{ color: f.statusColor }}>{f.status}</Text>
-                        </View>
-                        <Text className="text-[10px] font-manrope-bold text-gray-400">{f.unit}</Text>
-                      </View>
-                    </View>
-
-                    <Text className="text-[14px] font-manrope-extrabold text-[#0F172A]">{f.customerName}</Text>
-                    <Text className="text-[10px] font-manrope-medium text-gray-500 mt-0.5">{f.nextEvent}</Text>
-
-                    <View className="h-[1px] bg-gray-200 w-full my-3" />
-
-                    <Text className="text-[9px] font-manrope-bold text-gray-600 uppercase mb-1.5">Sales Officer</Text>
-                    <View className="flex-row items-center gap-2.5">
-                      <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center border border-gray-400">
-                        <Text className="text-[10px] font-manrope-bold text-gray-800 ">{f.officerInitials}</Text>
-                      </View>
-                      <Text className="text-[12px] font-manrope-bold text-[#333]">{f.salesOfficer}</Text>
-                    </View>
-                  </View>
-                ))
               ) : (
-                <View className="py-10 items-center px-6">
-                  <Feather name="clipboard" size={34} color="#CBD5E1" />
-                  <Text className="text-[13px] font-manrope-bold text-[#64748B] mt-3 text-center">No follow ups added yet</Text>
-                  <Text className="text-[11px] font-manrope-medium text-gray-400 mt-1 text-center">
-                    Follow-up details will appear here once admin sends them.
-                  </Text>
-                </View>
+                <>
+                  {/* ── Visits Section ── */}
+                  {visits.length > 0 && (
+                    <View className="mb-4">
+                      <Text className="text-[12px] font-manrope-bold text-gray-400 uppercase tracking-widest mb-2.5">Site Visits</Text>
+
+                      {upcomingVisits.length > 0 && (
+                        <View className="mb-3">
+                          <Text className="text-[10px] font-manrope-bold text-[#027A48] uppercase mb-2">📅 Upcoming</Text>
+                          {upcomingVisits.map(v => (
+                            <View key={v.id} className="bg-white border border-[#D1FAE5] rounded-[16px] p-4 mb-2.5" style={{ elevation: 1, shadowColor: '#027A48', shadowOpacity: 0.05, shadowRadius: 4 }}>
+                              <View className="flex-row items-center justify-between mb-2">
+                                <View className="px-2.5 py-0.5 rounded-full" style={{ backgroundColor: v.statusBg }}>
+                                  <Text className="text-[9px] font-manrope-bold" style={{ color: v.statusColor }}>{v.statusLabel}</Text>
+                                </View>
+                                {v.leadTemperature === 'hot' && (
+                                  <Text className="text-[9px] font-manrope-bold text-[#B42318]">🔥 Hot Lead</Text>
+                                )}
+                              </View>
+                              <Text className="text-[14px] font-manrope-extrabold text-[#0F172A]">{v.customerName}</Text>
+                              {v.slotDisplay && (
+                                <View className="flex-row items-center gap-1.5 mt-1">
+                                  <MaterialCommunityIcons name="clock-outline" size={12} color="#64748B" />
+                                  <Text className="text-[11px] font-manrope-medium text-gray-500">{v.slotDisplay}</Text>
+                                </View>
+                              )}
+                              <View className="h-[1px] bg-gray-100 w-full my-2.5" />
+                              <View className="flex-row items-center gap-2">
+                                <View className="w-7 h-7 rounded-full bg-gray-100 items-center justify-center border border-gray-300">
+                                  <Text className="text-[9px] font-manrope-bold text-gray-700">{v.officerInitials}</Text>
+                                </View>
+                                <Text className="text-[11px] font-manrope-medium text-gray-600">{v.salesOfficer}</Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {pastVisits.length > 0 && (
+                        <View className="mb-3">
+                          <Text className="text-[10px] font-manrope-bold text-gray-400 uppercase mb-2">🕐 Past Visits</Text>
+                          {pastVisits.map(v => (
+                            <View key={v.id} className="bg-white border border-gray-100 rounded-[16px] p-4 mb-2.5" style={{ elevation: 1, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3 }}>
+                              <View className="flex-row items-center justify-between mb-2">
+                                <View className="px-2.5 py-0.5 rounded-full" style={{ backgroundColor: v.statusBg }}>
+                                  <Text className="text-[9px] font-manrope-bold" style={{ color: v.statusColor }}>{v.statusLabel}</Text>
+                                </View>
+                                {v.leadTemperature === 'hot' && (
+                                  <Text className="text-[9px] font-manrope-bold text-[#B42318]">🔥 Hot</Text>
+                                )}
+                              </View>
+                              <Text className="text-[14px] font-manrope-extrabold text-[#0F172A]">{v.customerName}</Text>
+                              {v.slotDisplay && (
+                                <View className="flex-row items-center gap-1.5 mt-1">
+                                  <MaterialCommunityIcons name="clock-outline" size={12} color="#94A3B8" />
+                                  <Text className="text-[11px] font-manrope-medium text-gray-400">{v.slotDisplay}</Text>
+                                </View>
+                              )}
+                              {v.note && (
+                                <Text className="text-[11px] font-manrope-regular text-gray-400 mt-1.5 italic">{v.note}</Text>
+                              )}
+                              <View className="h-[1px] bg-gray-100 w-full my-2.5" />
+                              <View className="flex-row items-center gap-2">
+                                <View className="w-7 h-7 rounded-full bg-gray-100 items-center justify-center border border-gray-300">
+                                  <Text className="text-[9px] font-manrope-bold text-gray-700">{v.officerInitials}</Text>
+                                </View>
+                                <Text className="text-[11px] font-manrope-medium text-gray-600">{v.salesOfficer}</Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {/* ── Deal Stages Section ── */}
+                  {followUps.length > 0 ? (
+                    <View>
+                      <Text className="text-[12px] font-manrope-bold text-gray-400 uppercase tracking-widest mb-2.5">Active Deals</Text>
+                      {followUps.map(f => (
+                        <View key={f.id} className="bg-white border border-gray-100 rounded-[18px] mb-4" style={{ elevation: 2, shadowColor: '#101828', shadowOpacity: 0.06, shadowRadius: 6, overflow: 'hidden' }}>
+                          {/* Deal header */}
+                          <View className="flex-row items-center justify-between px-4 pt-4 pb-3">
+                            <View className="flex-1 mr-2">
+                              <Text className="text-[15px] font-manrope-extrabold text-[#0F172A]">{f.customerName}</Text>
+                              {f.nextEvent && (
+                                <Text className="text-[11px] font-manrope-medium text-gray-500 mt-0.5">{f.nextEvent}</Text>
+                              )}
+                            </View>
+                            <View className="px-3 py-1 rounded-full" style={{ backgroundColor: f.statusBg }}>
+                              <Text className="text-[9px] font-manrope-bold" style={{ color: f.statusColor }}>{f.status}</Text>
+                            </View>
+                          </View>
+
+                          <View className="h-[1px] bg-gray-100 mx-4" />
+
+                          {/* Deal stage progress cards */}
+                          <View className="px-4 pt-3 pb-4 gap-2">
+                            {DEAL_STAGES.map((stage, idx) => {
+                              const isDone = idx < f.currentStageIndex;
+                              const isCurrent = idx === f.currentStageIndex;
+                              return (
+                                <View
+                                  key={stage.key}
+                                  className="flex-row items-center gap-3 rounded-[12px] px-3 py-2.5"
+                                  style={{
+                                    backgroundColor: isCurrent ? '#F1F3FF' : isDone ? '#F8FAF8' : '#FAFAFA',
+                                    borderWidth: 1,
+                                    borderColor: isCurrent ? '#C7C4F8' : isDone ? '#D1FAE5' : '#F1F5F9',
+                                  }}
+                                >
+                                  <View
+                                    className="w-7 h-7 rounded-full items-center justify-center"
+                                    style={{ backgroundColor: isCurrent ? '#4A43EC' : isDone ? '#027A48' : '#E2E8F0' }}
+                                  >
+                                    {isDone ? (
+                                      <MaterialCommunityIcons name="check" size={14} color="#fff" />
+                                    ) : (
+                                      <MaterialCommunityIcons name={stage.icon} size={13} color={isCurrent ? '#fff' : '#94A3B8'} />
+                                    )}
+                                  </View>
+                                  <Text
+                                    className="text-[12px] flex-1"
+                                    style={{
+                                      fontFamily: isCurrent ? 'Manrope-Bold' : isDone ? 'Manrope-SemiBold' : 'Manrope-Regular',
+                                      color: isCurrent ? '#4A43EC' : isDone ? '#027A48' : '#94A3B8',
+                                    }}
+                                  >
+                                    {stage.label}
+                                  </Text>
+                                  {isCurrent && (
+                                    <View className="px-2 py-0.5 rounded-full bg-[#4A43EC]">
+                                      <Text className="text-[8px] font-manrope-bold text-white">CURRENT</Text>
+                                    </View>
+                                  )}
+                                  {isDone && (
+                                    <MaterialCommunityIcons name="check-circle" size={14} color="#027A48" />
+                                  )}
+                                </View>
+                              );
+                            })}
+                          </View>
+
+                          {/* Sales officer footer */}
+                          <View className="border-t border-gray-100 mx-4 pt-2.5 pb-4">
+                            <Text className="text-[9px] font-manrope-bold text-gray-400 uppercase mb-1.5">Sales Officer</Text>
+                            <View className="flex-row items-center gap-2.5">
+                              <View className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center border border-gray-300">
+                                <Text className="text-[10px] font-manrope-bold text-gray-800">{f.officerInitials}</Text>
+                              </View>
+                              <Text className="text-[12px] font-manrope-bold text-[#333]">{f.salesOfficer}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ) : visits.length === 0 ? (
+                    <View className="py-10 items-center px-6">
+                      <Feather name="clipboard" size={34} color="#CBD5E1" />
+                      <Text className="text-[13px] font-manrope-bold text-[#64748B] mt-3 text-center">No activity yet</Text>
+                      <Text className="text-[11px] font-manrope-medium text-gray-400 mt-1 text-center">
+                        Visits and deals for this property will appear here.
+                      </Text>
+                    </View>
+                  ) : null}
+                </>
               )}
             </BottomSheetScrollView>
           )}
 
           {/* Footer Tabs */}
-          <View className="px-5 pt-3 pb-8 flex-row gap-3 border-t border-gray-100 bg-white">
+          <View className="px-5 pt-3 flex-row gap-3 border-t border-gray-100 bg-white" style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingBottom: Math.max(insets.bottom, 16), elevation: 8, shadowColor: "#101828", shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: -3 } }}>
             <TouchableOpacity
               onPress={() => setActiveTab("detail")}
               className="flex-1 rounded-2xl py-4 items-center justify-center"
@@ -571,6 +758,11 @@ export default function PropertyDetailSheet({
         visible={zoomVisible}
         onClose={() => setZoomVisible(false)}
         source={naksha}
+      />
+      <ImageLightbox
+        visible={galleryVisible}
+        images={propertyImages.length > 0 ? propertyImages.map((media) => media.url) : (primaryImage ? [primaryImage] : [])}
+        onClose={() => setGalleryVisible(false)}
       />
     </>
   );

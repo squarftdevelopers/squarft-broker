@@ -1,5 +1,8 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
+import { store } from '../store/store';
+import { logout } from '../store/slices/authSlice';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
@@ -68,8 +71,13 @@ api.interceptors.response.use(
       // Token expired or invalid
       try {
         await AsyncStorage.removeItem('auth_token');
+        await AsyncStorage.removeItem('auth_user');
         await AsyncStorage.removeItem('userData');
-        console.log('🔐 [API] Token cleared due to 401');
+        console.log('🔐 [API] Token cleared due to 401 - Dispatching logout');
+        store.dispatch(logout());
+        try {
+          router.replace('/(auth)/login');
+        } catch (_) {}
         error.userMessage = 'Session expired. Please login again.';
       } catch (storageError) {
         console.warn('⚠️ [API] Could not clear storage:', storageError.message);

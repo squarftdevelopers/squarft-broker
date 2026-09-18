@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, TextInput, StatusBar, ScrollView, Alert } from 'react-native';
+import { View, Text, Pressable, TextInput, StatusBar, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
@@ -15,8 +15,10 @@ const AddBankScreen = () => {
     const [accountNumber, setAccountNumber] = useState('');
     const [reAccountNumber, setReAccountNumber] = useState('');
     const [ifsc, setIfsc] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
     const handleAddBank = async () => {
+        if (submitting) return;
         if (!bankName || !accountNumber || !reAccountNumber || !ifsc) {
             Alert.alert("Error", "Please fill all fields");
             return;
@@ -27,6 +29,7 @@ const AddBankScreen = () => {
         }
 
         try {
+            setSubmitting(true);
             await dispatch(addBankAccountApi({
                 bankName: bankName,
                 accountNumber: accountNumber,
@@ -36,6 +39,8 @@ const AddBankScreen = () => {
             router.replace("/(screens)/bank-success");
         } catch (err) {
             Alert.alert("Error", err || "Failed to add bank account");
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -99,9 +104,14 @@ const AddBankScreen = () => {
 
                 <Pressable
                     onPress={handleAddBank}
-                    className="bg-[#4A43EC] py-4 rounded-xl items-center justify-center mt-4 mb-10"
+                    disabled={submitting}
+                    className={`bg-[#4A43EC] py-4 rounded-xl items-center justify-center mt-4 mb-10 flex-row ${submitting ? 'opacity-70' : ''}`}
                 >
-                    <Text className="text-white text-[16px] font-manrope-bold">Add Bank Account</Text>
+                    {submitting ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                        <Text className="text-white text-[16px] font-manrope-bold">Add Bank Account</Text>
+                    )}
                 </Pressable>
             </ScrollView>
         </View>

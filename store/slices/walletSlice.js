@@ -14,24 +14,29 @@ const normalizeTransaction = (transaction = {}) => {
     const propertyAddress = transaction.property_address || transaction.propertyAddress || transaction.location || '';
     const transferToDetails = transaction.transfer_to_details || transaction.transferToDetails || transaction.bank_name || transaction.bank || '';
     const createdAt = transaction.created_at || transaction.createdAt || transaction.date || null;
-    const transactionNo = transaction.transactionNo || transaction.transaction_no || transaction.id?.toString() || '';
+    const utr = transaction.utr || transaction.transactionId || null;
+    const transactionNo = utr || transaction.transactionNo || transaction.transaction_no || transaction.id?.toString() || '';
+
+    const defaultTitle = type === 'debit' ? 'Bank Withdrawal' : 'Commission Earned';
+    const defaultLocation = type === 'debit' ? (transferToDetails || 'Transferred to bank account') : (propertyAddress || 'Earned from property deal');
 
     return {
         ...transaction,
         amount: toNumber(transaction.amount),
         type,
-        property_name: propertyName,
-        propertyName,
+        utr,
+        property_name: propertyName || defaultTitle,
+        propertyName: propertyName || defaultTitle,
         property_address: propertyAddress,
         propertyAddress,
         transfer_to_details: transferToDetails,
         transferToDetails,
         bank_name: transferToDetails,
-        bank: transferToDetails || 'N/A',
+        bank: transferToDetails || (type === 'debit' ? 'Bank Account' : 'N/A'),
         created_at: createdAt,
         createdAt,
-        title: propertyName || (type === 'credit' ? 'Commission' : 'Withdrawal'),
-        location: propertyAddress || (type === 'credit' ? 'Earned from property sale' : 'Withdrawal to bank'),
+        title: propertyName || defaultTitle,
+        location: defaultLocation,
         transactionNo,
     };
 };
@@ -138,6 +143,7 @@ export const fetchCommissionHistory = createAsyncThunk(
                         property_name: commission.propertyName || '',
                         propertyAddress: commission.propertyAddress || '',
                         property_address: commission.propertyAddress || '',
+                        commissionKind: commission.commissionKind || null,
                         createdAt: commission.date || null,
                         created_at: commission.date || null,
                         type: 'credit',

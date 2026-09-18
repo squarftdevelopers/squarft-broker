@@ -120,7 +120,9 @@ const TransactionsScreen = () => {
                             className="flex-row items-center justify-between py-3.5 border-b border-gray-50"
                         >
                             <View>
-                                <Text className="text-[12px] font-manrope-bold text-[#272727]">{item.property_name || 'Commission'}</Text>
+                                <Text className="text-[12px] font-manrope-bold text-[#272727]">
+                                    {item.property_name || (item.type === 'debit' ? 'Bank Withdrawal' : 'Commission Earned')}
+                                </Text>
                                 <Text className="text-[9px] text-gray-400 font-manrope-medium mt-1">{formatDate(item.created_at)}</Text>
                             </View>
                             <View className="flex-row items-center">
@@ -151,23 +153,37 @@ const TransactionsScreen = () => {
             >
                 <BottomSheetView className="flex-1 px-6 pt-5">
                     <View className="mb-1">
-                        <Text className="text-[15px] font-manrope-extrabold text-[#272727]">{selectedTransaction?.title}</Text>
+                        <Text className="text-[15px] font-manrope-extrabold text-[#272727]">
+                            {selectedTransaction?.title || (selectedTransaction?.type === 'debit' ? 'Bank Withdrawal' : 'Commission Earned')}
+                        </Text>
                     </View>
-                    <Text className="text-gray-400 font-manrope-medium mb-5 text-[11px]">{selectedTransaction?.location}</Text>
+                    <Text className="text-gray-400 font-manrope-medium mb-5 text-[11px]">
+                        {selectedTransaction?.location || (selectedTransaction?.type === 'credit' ? 'Earned from property deal' : 'Withdrawal to bank')}
+                    </Text>
 
-                    <View className="bg-[#E8F9EE] rounded-[12px] py-3 items-center mb-5">
-                        <Text className="text-[#22C55E] text-[20px] font-manrope-extrabold">₹{Number(selectedTransaction?.amount).toLocaleString('en-IN')}</Text>
+                    <View className={`${selectedTransaction?.type === 'debit' ? 'bg-red-50' : 'bg-[#E8F9EE]'} rounded-[12px] py-3 items-center mb-5`}>
+                        <Text className={`${selectedTransaction?.type === 'debit' ? 'text-[#EF4444]' : 'text-[#22C55E]'} text-[20px] font-manrope-extrabold`}>
+                            {selectedTransaction?.type === 'debit' ? '-' : '+'}₹{Number(selectedTransaction?.amount).toLocaleString('en-IN')}
+                        </Text>
                     </View>
 
                     <View className="bg-white border border-gray-100 rounded-[14px] p-3.5 mb-3.5" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 5 }}>
-                        <Text className="text-gray-400 text-[9px] font-manrope-medium mb-1 uppercase tracking-wider">Transfer to</Text>
-                        <Text className="text-[#272727] text-[13px] font-manrope-bold">{selectedTransaction?.bank}</Text>
+                        <Text className="text-gray-400 text-[9px] font-manrope-medium mb-1 uppercase tracking-wider">
+                            {selectedTransaction?.type === 'debit' ? 'Transferred to' : 'Details'}
+                        </Text>
+                        <Text className="text-[#272727] text-[13px] font-manrope-bold">
+                            {selectedTransaction?.bank || selectedTransaction?.transfer_to_details || selectedTransaction?.property_address || (selectedTransaction?.type === 'debit' ? 'Bank Account' : 'Wallet Main Balance')}
+                        </Text>
                     </View>
 
                     <View className="bg-white border border-gray-100 rounded-[14px] p-3.5 flex-row items-center justify-between" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 5 }}>
                         <View>
-                            <Text className="text-gray-400 text-[9px] font-manrope-medium mb-1 uppercase tracking-wider">Transaction no.</Text>
-                            <Text className="text-[#272727] text-[13px] font-manrope-bold">{selectedTransaction?.transactionNo}</Text>
+                            <Text className="text-gray-400 text-[9px] font-manrope-medium mb-1 uppercase tracking-wider">
+                                {selectedTransaction?.utr ? 'UTR / Ref No.' : 'Transaction no.'}
+                            </Text>
+                            <Text className="text-[#272727] text-[13px] font-manrope-bold">
+                                {selectedTransaction?.utr || selectedTransaction?.transactionNo || (selectedTransaction?.id ? selectedTransaction.id.toString().slice(0, 8) + '...' : 'N/A')}
+                            </Text>
                         </View>
                         <Pressable
                             onPress={handleCopyTransaction}
