@@ -45,3 +45,6 @@ squarft-7bb7f-firebase-adminsdk-fbsvc-9a57750113.json
 /android
 
 *.apk
+
+# Production Optimization Sprint
+production-optimization/
