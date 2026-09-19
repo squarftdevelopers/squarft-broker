@@ -14,6 +14,7 @@ import {
   Keyboard,
   Image,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,10 +24,10 @@ import {
   createRequirement, 
   updateRequirementApi, 
   setContactVerified,
-  sendCustomerOtp,
-  verifyCustomerOtp,
   clearCustomerOtpState
 } from "../../store/slices/requirementsSlice";
+import { brokerPropertyApi } from "../../services/projectApi";
+import LocationMapPicker from "../../components/LocationMapPicker";
 import { notifyClientSubmitted } from "../../utils/notificationHelpers";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -97,19 +98,14 @@ export default function AddCustomerRequirement() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const requirementsList = useSelector((state) => state.requirements.list);
-  const isContactVerified = useSelector((state) => state.requirements.isContactVerified);
-  const customerOtpToken = useSelector((state) => state.requirements.customerOtpToken);
-  const customerVerifiedToken = useSelector((state) => state.requirements.customerVerifiedToken);
-  const otpLoading = useSelector((state) => state.requirements.otpLoading);
-  const otpError = useSelector((state) => state.requirements.otpError);
   const existingReq = useMemo(
     () => (isEdit && Array.isArray(requirementsList) ? requirementsList.find(r => r.id.toString() === id.toString()) : null),
     [isEdit, requirementsList, id]
   );
 
   const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [countdown, setCountdown] = useState(0);
+  const [customerOtp, setCustomerOtp] = useState({ token: "", verifiedToken: "", sending: false, verifying: false });
+  const [locationMapVisible, setLocationMapVisible] = useState(false);
 
   const [propertyCategory, setPropertyCategory] = useState("Residential");
   const [form, setForm] = useState({
@@ -154,6 +150,7 @@ export default function AddCustomerRequirement() {
       setPropertyCategory(category);
       // "sell" and "buy" both map back to "Buy"
 
+      const rawContact = existingReq.contact_number ? String(existingReq.contact_number).replace(/\D/g, "").slice(-10) : "";
       setForm({
         status: uiStatus,
         category: existingReq.property_type || "Plot",
@@ -161,7 +158,7 @@ export default function AddCustomerRequirement() {
         maxArea: existingReq.max_area ? String(existingReq.max_area) : "",
         unit: existingReq.area_unit || "Square Feet (Sq. ft)",
         name: existingReq.customer_name || "",
-        contact: existingReq.contact_number || "",
+        contact: rawContact,
         location: existingReq.preferred_locations?.[0] || "",
         budgetMin: existingReq.budget_min || MIN_VALUE,
         budgetMax: existingReq.budget_max || 10000000,
@@ -174,21 +171,14 @@ export default function AddCustomerRequirement() {
       setSliderMin(Math.max(0, minPerc));
       setSliderMax(Math.min(1, maxPerc));
 
+      setCustomerOtp({ token: "", verifiedToken: "existing", sending: false, verifying: false });
       dispatch(setContactVerified(true));
     } else {
+      setCustomerOtp({ token: "", verifiedToken: "", sending: false, verifying: false });
       dispatch(setContactVerified(false));
       dispatch(clearCustomerOtpState());
     }
-  }, [id, existingReq]);
-
-  // Countdown timer for OTP resend
-  useEffect(() => {
-    let timer;
-    if (countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [countdown]);
+  }, [id, existingReq, dispatch, isEdit]);
 
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -250,48 +240,41 @@ export default function AddCustomerRequirement() {
     })
   ).current;
 
-  const handleSendOTP = async () => {
-    if (!form.contact || form.contact.length < 10) {
-      alert("Please enter a valid 10-digit phone number");
-      return;
-    }
-
-    console.log('🔔 [AddCustomerReq] Attempting to send OTP to:', form.contact);
-    
+  const sendCustomerOtp = async () => {
+    const phone = form.contact.replace(/\D/g, "");
+    if (phone.length !== 10) return Alert.alert("Invalid number", "Enter a valid 10-digit customer contact number.");
+    setCustomerOtp(x => ({ ...x, sending: true, verifiedToken: "" }));
     try {
-      const result = await dispatch(sendCustomerOtp({ phone: form.contact })).unwrap();
-      console.log('✅ [AddCustomerReq] OTP sent successfully:', result);
-      setOtpSent(true);
-      setCountdown(60); // Start 60 second countdown
-      alert("OTP sent to " + form.contact);
-    } catch (error) {
-      console.error('❌ [AddCustomerReq] Failed to send OTP:', error);
-      alert(error || "Failed to send OTP. Check console for details.");
+      const response = await brokerPropertyApi.sendCustomerOtp(`+91${phone}`);
+      setCustomerOtp({ token: response.data?.otp_token || "", verifiedToken: "", sending: false, verifying: false });
+      Alert.alert("OTP Sent", `An OTP has been sent to +91 ${phone}`);
+    } catch (e) {
+      setCustomerOtp(x => ({ ...x, sending: false }));
+      Alert.alert("Could not send OTP", e.response?.data?.message || e.message || "Please try again.");
     }
   };
 
-  const handleOTPChange = async (text) => {
-    setOtp(text);
-    if (text.length === 6 && customerOtpToken) {
-      try {
-        await dispatch(verifyCustomerOtp({ otp_token: customerOtpToken, otp: text })).unwrap();
-        Keyboard.dismiss();
-        alert("Contact number verified successfully!");
-      } catch (error) {
-        alert(error || "Invalid OTP");
-        setOtp("");
-      }
+  const verifyCustomerOtp = async () => {
+    if (!customerOtp.token) return Alert.alert("Send OTP first", "Request an OTP for the customer contact number.");
+    if (otp.length !== 6) return Alert.alert("Invalid OTP", "Enter the 6-digit OTP.");
+    setCustomerOtp(x => ({ ...x, verifying: true }));
+    try {
+      const response = await brokerPropertyApi.verifyCustomerOtp(customerOtp.token, otp);
+      setCustomerOtp(x => ({ ...x, verifiedToken: response.data?.verified_token || "", verifying: false }));
+      dispatch(setContactVerified(true));
+      Alert.alert("Success", "Customer contact number verified successfully!");
+    } catch (e) {
+      setCustomerOtp(x => ({ ...x, verifying: false, verifiedToken: "" }));
+      Alert.alert("Verification failed", e.response?.data?.message || e.message || "Please check the OTP.");
     }
   };
 
   const handlePhoneChange = (text) => {
-    setForm({ ...form, contact: text });
-    if (isContactVerified || otpSent) {
-      dispatch(clearCustomerOtpState());
-      setOtpSent(false);
-      setOtp("");
-      setCountdown(0);
-    }
+    const cleaned = text.replace(/\D/g, "").slice(0, 10);
+    setForm(prev => ({ ...prev, contact: cleaned }));
+    setCustomerOtp({ token: "", verifiedToken: "", sending: false, verifying: false });
+    setOtp("");
+    dispatch(setContactVerified(false));
   };
 
   const formatCurrency = (val) => {
@@ -306,8 +289,20 @@ export default function AddCustomerRequirement() {
   };
 
   const handleSubmit = async () => {
-    if (!form.name || !form.contact) {
-      alert("Please enter customer name and contact number");
+    if (!form.name.trim() || !form.contact.trim()) {
+      Alert.alert("Details required", "Please enter customer name and contact number.");
+      return;
+    }
+
+    const cleanContact = form.contact.replace(/\D/g, "");
+    if (cleanContact.length !== 10) {
+      Alert.alert("Invalid number", "Enter a valid 10-digit customer contact number.");
+      return;
+    }
+
+    const isOriginalPhone = isEdit && existingReq && String(existingReq.contact_number || "").replace(/\D/g, "").slice(-10) === cleanContact;
+    if (!isOriginalPhone && !customerOtp.verifiedToken) {
+      Alert.alert("Verification required", "Verify the customer contact number with OTP.");
       return;
     }
 
@@ -322,9 +317,9 @@ export default function AddCustomerRequirement() {
     }
 
     const payload = {
-      verified_token: customerVerifiedToken,
+      ...(customerOtp.verifiedToken && customerOtp.verifiedToken !== "existing" ? { verified_token: customerOtp.verifiedToken } : {}),
       customer_name: form.name.trim(),
-      contact_number: form.contact.trim(),
+      contact_number: `+91${cleanContact}`,
       requirement_type: reqType,
       property_type: form.category,
       budget_min: form.budgetMin,
@@ -339,21 +334,21 @@ export default function AddCustomerRequirement() {
     try {
       if (isEdit) {
         await dispatch(updateRequirementApi({ id, payload })).unwrap();
+        Alert.alert("Success", "Customer requirement updated successfully!");
       } else {
         const result = await dispatch(createRequirement(payload)).unwrap();
+        Alert.alert("Success", "Customer requirement submitted successfully!");
         
-        // ✅ Event #12: Trigger notification after client submission
-        console.log('📋 [AddCustomerRequirement] Client submitted successfully, triggering notification');
+        // Trigger notification after client submission
         await notifyClientSubmitted({
           clientId: result.id,
           clientReference: result.customer_name || form.name,
         });
-        console.log('✅ [AddCustomerRequirement] Client submission notification sent');
       }
       router.back();
     } catch (err) {
       console.error('❌ [AddCustomerRequirement] Submission error:', err);
-      alert(err || "Something went wrong");
+      Alert.alert("Could not submit", typeof err === "string" ? err : err?.message || "Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -562,93 +557,76 @@ export default function AddCustomerRequirement() {
 
           {/* Contact Number */}
           <View className="mb-5" onLayout={(e) => handleFieldLayout("contact", e)}>
-            <Text className="text-sm font-lato-bold mb-2">Contact Number</Text>
-            <View className="flex-row items-center gap-2">
-              <View className="flex-1">
-                <TextInput
-                  placeholder="Enter contact number"
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                  className="bg-white border border-gray-300 rounded-lg px-3 h-12 text-sm font-lato-regular"
-                  value={form.contact}
-                  onChangeText={handlePhoneChange}
-                  onFocus={() => handleFocus("contact")}
-                  editable={!isContactVerified}
-                />
-              </View>
-              
-              {!isContactVerified && form.contact.length === 10 && !otpSent && (
-                <Pressable 
-                  onPress={handleSendOTP}
-                  disabled={otpLoading}
-                  className="bg-[#4A43EC] px-3 h-12 items-center justify-center rounded-lg min-w-[80px]"
-                >
-                  {otpLoading ? (
-                    <ActivityIndicator color="white" size="small" />
-                  ) : (
-                    <Text className="text-white text-xs font-lato-bold">Send OTP</Text>
-                  )}
-                </Pressable>
-              )}
+            <Text className="text-sm font-lato-bold mb-2">Customer Contact No.</Text>
+            <View className="min-h-[48px] border border-gray-300 rounded-lg flex-row items-center px-3 bg-white">
+              <Text style={{ color: "#17171B", fontSize: 13, marginRight: 7, fontFamily: "Lato-Regular" }}>+91</Text>
+              <TextInput
+                placeholder="8120180101"
+                placeholderTextColor="#8E8E96"
+                keyboardType="phone-pad"
+                maxLength={10}
+                className="flex-1 text-sm font-lato-regular text-[#17171B] py-2"
+                value={form.contact}
+                onChangeText={handlePhoneChange}
+                onFocus={() => handleFocus("contact")}
+              />
+              <Pressable disabled={customerOtp.sending} onPress={sendCustomerOtp}>
+                <Text style={{ color: "#4A43EC", fontSize: 14, fontFamily: "Lato-Bold" }}>
+                  {customerOtp.sending ? "Sending..." : customerOtp.token ? "Resend OTP" : "Send OTP"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
 
-              {isContactVerified && (
-                <View className="bg-green-100 p-2 rounded-full">
-                  <Ionicons name="checkmark-circle" size={20} color="green" />
+          {/* Enter OTP */}
+          <View className="mb-5" onLayout={(e) => handleFieldLayout("otp", e)}>
+            <Text className="text-sm font-lato-bold mb-2">Enter OTP</Text>
+            <View className="min-h-[48px] border border-gray-300 rounded-lg flex-row items-center px-3 bg-white">
+              <TextInput
+                placeholder="Enter 6-digit OTP"
+                placeholderTextColor="#8E8E96"
+                keyboardType="number-pad"
+                maxLength={6}
+                className="flex-1 text-sm font-lato-regular text-[#17171B] py-2"
+                value={otp}
+                onChangeText={(v) => setOtp(v.replace(/\D/g, "").slice(0, 6))}
+                onFocus={() => handleFocus("otp")}
+              />
+              {customerOtp.verifiedToken ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Ionicons name="checkmark-circle" size={19} color="#16A34A" />
+                  <Text style={{ color: "#16A34A", fontSize: 12, fontFamily: "Lato-Bold" }}>Verified</Text>
                 </View>
+              ) : (
+                <Pressable disabled={customerOtp.verifying} onPress={verifyCustomerOtp}>
+                  <Text style={{ color: "#4A43EC", fontSize: 13, fontFamily: "Lato-Bold" }}>
+                    {customerOtp.verifying ? "Verifying..." : "Verify OTP"}
+                  </Text>
+                </Pressable>
               )}
             </View>
-
-            {/* OTP Input Row */}
-            {otpSent && !isContactVerified && (
-              <View className="flex-row items-center gap-2 mt-3">
-                <View className="flex-1">
-                  <TextInput
-                    placeholder="Enter 6-digit OTP"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    className="bg-white border border-gray-300 rounded-lg px-3 h-12 text-center text-sm font-lato-regular"
-                    value={otp}
-                    onChangeText={handleOTPChange}
-                    editable={!otpLoading}
-                  />
-                </View>
-                <Pressable 
-                  onPress={handleSendOTP}
-                  disabled={countdown > 0 || otpLoading}
-                  className={`px-3 h-12 items-center justify-center rounded-lg min-w-[80px] ${
-                    countdown > 0 || otpLoading ? 'bg-gray-300' : 'bg-[#4A43EC]/10'
-                  }`}
-                >
-                  {otpLoading ? (
-                    <ActivityIndicator color="#4A43EC" size="small" />
-                  ) : (
-                    <Text className={`text-xs font-lato-bold ${countdown > 0 ? 'text-gray-500' : 'text-[#4A43EC]'}`}>
-                      {countdown > 0 ? `${countdown}s` : 'Resend'}
-                    </Text>
-                  )}
-                </Pressable>
-              </View>
-            )}
-
-            {/* Error Message */}
-            {otpError && (
-              <Text className="text-red-500 text-xs mt-1 font-lato-regular">{otpError}</Text>
-            )}
           </View>
 
           {/* Preferred Location */}
           <View className="mb-5" onLayout={(e) => handleFieldLayout("location", e)}>
             <Text className="text-sm font-lato-bold mb-2">Preferred Location</Text>
-            <View className="flex-row items-center border border-gray-300 rounded-lg px-3 h-12">
+            <View className="min-h-[48px] border border-gray-300 rounded-lg flex-row items-center px-3 bg-white">
               <Ionicons name="location" size={18} color="#4A43EC" />
               <TextInput
-                placeholder="Enter preferred location"
-                className="flex-1 ml-2 text-sm font-lato-regular"
+                placeholder="Address & Landmark"
+                placeholderTextColor="#8E8E96"
+                className="flex-1 ml-2 text-sm font-lato-regular text-[#17171B] py-2"
                 value={form.location}
-                onChangeText={(text) => setForm({ ...form, location: text })}
+                onChangeText={(text) => setForm((prev) => ({ ...prev, location: text }))}
                 onFocus={() => handleFocus("location")}
               />
+              <Pressable 
+                onPress={() => { Keyboard.dismiss(); setLocationMapVisible(true); }} 
+                hitSlop={12} 
+                style={{ width: 30, height: 30, borderRadius: 7, backgroundColor: "#EEEDFD", alignItems: "center", justifyContent: "center" }}
+              >
+                <Ionicons name="map-outline" size={18} color="#4A43EC" />
+              </Pressable>
             </View>
           </View>
 
@@ -783,6 +761,21 @@ export default function AddCustomerRequirement() {
           </View>
         </Pressable>
       </Modal>
+
+      {/* Location Map Picker Modal */}
+      <LocationMapPicker 
+        visible={locationMapVisible} 
+        initialAddress={{ location: form.location }} 
+        onClose={() => setLocationMapVisible(false)} 
+        onConfirm={(address) => { 
+          setForm((prev) => ({ 
+            ...prev, 
+            location: address.location || [address.city, address.state].filter(Boolean).join(", ") || prev.location 
+          })); 
+          setLocationMapVisible(false); 
+        }} 
+        confirmLabel="Add this location" 
+      />
     </View>
   );
 }

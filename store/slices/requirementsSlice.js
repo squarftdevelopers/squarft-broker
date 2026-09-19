@@ -127,15 +127,17 @@ export const sendCustomerOtp = createAsyncThunk(
     'requirements/sendCustomerOtp',
     async ({ phone }, { rejectWithValue }) => {
         try {
-            console.log('📤 [sendCustomerOtp] Sending OTP to:', phone);
+            const formattedPhone = phone?.startsWith('+91') ? phone : `+91${String(phone || '').replace(/\D/g, '')}`;
+            console.log('📤 [sendCustomerOtp] Sending OTP to:', formattedPhone);
             console.log('📤 [sendCustomerOtp] API URL:', `${API_BASE_URL}/auth/send-otp`);
             
             const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    phone, 
-                    purpose: 'customer_verification' 
+                    phone: formattedPhone, 
+                    purpose: 'owner_contact',
+                    role: 'broker'
                 }),
             });
             
