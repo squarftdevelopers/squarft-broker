@@ -345,8 +345,8 @@ export default function Home() {
           <View className="flex-row gap-3 mb-6">
             <Pressable
               onPress={() => handleFilterPress("SELL")}
-              style={{ flex: 1 }}
-              className="h-11 bg-white rounded-full flex-row justify-center items-center border border-[#E5E7EB] shadow-xs px-3"
+              style={{ flexShrink: 0 }}
+              className="h-11 bg-white rounded-full flex-row justify-center items-center border border-[#E5E7EB] shadow-xs px-6"
             >
               <MaterialCommunityIcons 
                 name="filter-variant" 
