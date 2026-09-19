@@ -21,7 +21,7 @@ import { sanitizeS3Url } from "../../utils/s3ImageUrl";
 
 const { width } = Dimensions.get("window");
 
-const mainTabs = ["SELL"];
+const EMPTY_PROPERTIES = [];
 const buyFilter = "Customer Requirement";
 
 const formatIndianEarningAmount = (amount) => {
@@ -75,7 +75,6 @@ const propertyCategories = [
 ];
 
 export default function Home() {
-  const [activeFilter, setActiveFilter] = useState("SELL");
   const [selectedCategory, setSelectedCategory] = useState("residential");
   const [selectedPropertyType, setSelectedPropertyType] = useState(null);
   const [avatarLoadError, setAvatarLoadError] = useState(false);
@@ -86,7 +85,7 @@ export default function Home() {
   const brokerStats = useSelector(state => state.broker?.stats);
   const user = useSelector(state => state.auth?.user);
   const kyc = useSelector(state => state.auth?.kyc);
-  const shortlistedProperties = useSelector(state => state.property?.shortlistedProperties || []);
+  const shortlistedProperties = useSelector(state => state.property?.shortlistedProperties) ?? EMPTY_PROPERTIES;
   const shortlistedLoading = useSelector(state => state.property?.shortlistedLoading || false);
 
   const loadHomeData = useCallback(async () => {
@@ -114,12 +113,12 @@ export default function Home() {
     }, [loadHomeData])
   );
 
-  const stats = [
+  const stats = useMemo(() => [
     { label: "Total Properties", count: brokerStats?.total_properties ?? 0 },
     { label: "Total Sale",       count: brokerStats?.sales            ?? 0 },
     { label: "Pending",          count: brokerStats?.pending          ?? 0 },
     { label: "Rejected",         count: brokerStats?.rejected         ?? 0 },
-  ];
+  ], [brokerStats?.total_properties, brokerStats?.sales, brokerStats?.pending, brokerStats?.rejected]);
 
   const currentSubTypes = useMemo(() => {
     if (!selectedCategory) return [];
@@ -165,25 +164,18 @@ export default function Home() {
     };
   }, [brokerStats]);
 
-  const handleFilterPress = (filter) => {
+  const handleFilterPress = useCallback((filter) => {
     if (filter === "Customer Requirement") {
       router.push("/(screens)/customer-requirement");
-    } else {
-      setActiveFilter(filter);
     }
-  };
+  }, []);
   
-  const handleCategoryPress = (categoryId) => {
-    if (selectedCategory === categoryId) {
-      setSelectedCategory(null);
-      setSelectedPropertyType(null);
-    } else {
-      setSelectedCategory(categoryId);
-      setSelectedPropertyType(null);
-    }
-  };
+  const handleCategoryPress = useCallback((categoryId) => {
+    setSelectedCategory(prev => prev === categoryId ? null : categoryId);
+    setSelectedPropertyType(null);
+  }, []);
   
-  const handlePropertyTypePress = (typeId) => {
+  const handlePropertyTypePress = useCallback((typeId) => {
     setSelectedPropertyType(typeId);
     
     if (selectedCategory && typeId) {
@@ -194,7 +186,7 @@ export default function Home() {
     }
     
     router.push({ pathname: "/(screens)/property-type", params: { typeId, category: selectedCategory } });
-  };
+  }, [selectedCategory, dispatch]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "Recently joined";
@@ -203,8 +195,14 @@ export default function Home() {
     return date.toLocaleDateString('en-US', options);
   };
 
-  const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.full_name || user?.name || "User";
-  const displayDate = user?.created_at ? formatDate(user.created_at) : "Recently joined";
+  const displayName = useMemo(
+    () => [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.full_name || user?.name || "User",
+    [user?.first_name, user?.last_name, user?.full_name, user?.name]
+  );
+  const displayDate = useMemo(
+    () => (user?.created_at ? formatDate(user.created_at) : "Recently joined"),
+    [user?.created_at]
+  );
 
   const getValidImageUrl = (...candidates) => {
     for (const url of candidates) {
@@ -215,7 +213,10 @@ export default function Home() {
     return null;
   };
 
-  const avatarUrl = getValidImageUrl(user?.profilePictureUrl, kyc?.profile_photo_url, user?.avatar_url);
+  const avatarUrl = useMemo(
+    () => getValidImageUrl(user?.profilePictureUrl, kyc?.profile_photo_url, user?.avatar_url),
+    [user?.profilePictureUrl, kyc?.profile_photo_url, user?.avatar_url]
+  );
 
   useEffect(() => {
     setAvatarLoadError(false);

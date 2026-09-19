@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, StatusBar, Text, View } from "react-native";
@@ -7,11 +8,15 @@ export default function ComingSoonScreen({ title: propTitle } = {}) {
     const params = useLocalSearchParams();
     const title = propTitle || params?.title || "This page";
 
+    const handleBack = useCallback(() => {
+        router.back();
+    }, [router]);
+
     return (
         <View className="flex-1 bg-white">
             <StatusBar barStyle="dark-content" />
             <View className="flex-row items-center border-b border-gray-100 px-5 pb-4 pt-14">
-                <Pressable onPress={() => router.back()} className="mr-3 h-9 w-9 items-center justify-center" accessibilityRole="button" accessibilityLabel="Go back">
+                <Pressable onPress={handleBack} className="mr-3 h-9 w-9 items-center justify-center" accessibilityRole="button" accessibilityLabel="Go back">
                     <Ionicons name="arrow-back" size={22} color="#111827" />
                 </Pressable>
                 <Text className="text-xl font-bold text-gray-900">{title}</Text>

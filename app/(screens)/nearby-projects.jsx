@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import {
     ActivityIndicator,
     FlatList,
     Image,
+    Platform,
     Pressable,
     RefreshControl,
     StatusBar,
@@ -59,6 +60,75 @@ const formatDistance = (item) => {
     return Number.isFinite(distance) ? `${distance.toFixed(1)} km away` : null;
 };
 
+const ProjectCard = React.memo(({ item, onSelect }) => {
+    const coverImage = getCoverImage(item);
+    const distance = formatDistance(item);
+    const projectType = item.project_launch_status || item.status || (item.is_active ? "active" : null);
+
+    const handlePress = useCallback(() => {
+        onSelect(item);
+    }, [item, onSelect]);
+
+    return (
+        <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handlePress}
+            className="flex-row bg-white border border-gray-200 rounded-xl p-3 mb-3"
+        >
+            {coverImage ? (
+                <Image
+                    source={{ uri: coverImage }}
+                    className="w-24 h-24 rounded-lg bg-gray-100"
+                    resizeMode="cover"
+                />
+            ) : (
+                <View className="w-24 h-24 rounded-lg bg-gray-100 items-center justify-center">
+                    <Ionicons name="business-outline" size={28} color="#9CA3AF" />
+                </View>
+            )}
+
+            <View className="flex-1 ml-3">
+                <View className="flex-row items-start justify-between gap-2">
+                    <Text className="flex-1 text-sm font-lato-bold text-black" numberOfLines={1}>
+                        {getTitle(item)}
+                    </Text>
+                    <Ionicons name="checkmark-circle-outline" size={19} color="#4A43EC" />
+                </View>
+
+                <View className="flex-row items-center mt-1">
+                    <Ionicons name="location" size={13} color="#FE8A71" />
+                    <Text className="flex-1 text-xs font-lato-medium text-gray-500 ml-1" numberOfLines={1}>
+                        {getLocation(item)}
+                    </Text>
+                </View>
+
+                <View className="flex-row flex-wrap gap-2 mt-2">
+                    {projectType && (
+                        <View className="px-2 py-1 rounded-full bg-[#F0EFFD]">
+                            <Text className="text-[10px] font-lato-bold text-[#4A43EC] capitalize">
+                                {projectType}
+                            </Text>
+                        </View>
+                    )}
+                    {distance && (
+                        <View className="px-2 py-1 rounded-full bg-gray-100">
+                            <Text className="text-[10px] font-lato-medium text-gray-600">
+                                {distance}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+
+                <Text className="text-sm font-lato-bold text-[#4A43EC] mt-2" numberOfLines={1}>
+                    {formatPrice(item)}
+                </Text>
+            </View>
+        </TouchableOpacity>
+    );
+});
+
+ProjectCard.displayName = "ProjectCard";
+
 export default function NearbyProjects() {
     const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
@@ -66,7 +136,9 @@ export default function NearbyProjects() {
     const latitude = asNumber(firstParam(params.latitude));
     const longitude = asNumber(firstParam(params.longitude));
     const radius = asNumber(firstParam(params.radius), DEFAULT_RADIUS);
-    const { nearbyProjects, nearbyProjectsLoading, error } = useSelector((state) => state.property);
+    const nearbyProjects = useSelector((state) => state.property.nearbyProjects);
+    const nearbyProjectsLoading = useSelector((state) => state.property.nearbyProjectsLoading);
+    const error = useSelector((state) => state.property.error);
 
     const loadNearbyProjects = useCallback(() => {
         if (latitude === null || longitude === null) return;
@@ -77,7 +149,11 @@ export default function NearbyProjects() {
         loadNearbyProjects();
     }, [loadNearbyProjects]);
 
-    const handleSelect = (item) => {
+    const handleBack = useCallback(() => {
+        router.back();
+    }, []);
+
+    const handleSelect = useCallback((item) => {
         dispatch(pickNearbyProject({
             id: item.id,
             name: getTitle(item),
@@ -87,77 +163,48 @@ export default function NearbyProjects() {
             raw: item,
         }));
         router.back();
-    };
+    }, [dispatch]);
 
-    const renderProject = ({ item }) => {
-        const coverImage = getCoverImage(item);
-        const distance = formatDistance(item);
-        const projectType = item.project_launch_status || item.status || (item.is_active ? "active" : null);
+    const renderProject = useCallback(({ item }) => (
+        <ProjectCard item={item} onSelect={handleSelect} />
+    ), [handleSelect]);
 
-        return (
-            <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => handleSelect(item)}
-                className="flex-row bg-white border border-gray-200 rounded-xl p-3 mb-3"
-            >
-                {coverImage ? (
-                    <Image
-                        source={{ uri: coverImage }}
-                        className="w-24 h-24 rounded-lg bg-gray-100"
-                        resizeMode="cover"
-                    />
-                ) : (
-                    <View className="w-24 h-24 rounded-lg bg-gray-100 items-center justify-center">
-                        <Ionicons name="business-outline" size={28} color="#9CA3AF" />
-                    </View>
-                )}
+    const keyExtractor = useCallback((item, index) => String(item.id || item.slug || index), []);
 
-                <View className="flex-1 ml-3">
-                    <View className="flex-row items-start justify-between gap-2">
-                        <Text className="flex-1 text-sm font-lato-bold text-black" numberOfLines={1}>
-                            {getTitle(item)}
-                        </Text>
-                        <Ionicons name="checkmark-circle-outline" size={19} color="#4A43EC" />
-                    </View>
+    const contentContainerStyle = useMemo(() => ({
+        paddingBottom: insets.bottom + 28,
+        flexGrow: 1,
+    }), [insets.bottom]);
 
-                    <View className="flex-row items-center mt-1">
-                        <Ionicons name="location" size={13} color="#FE8A71" />
-                        <Text className="flex-1 text-xs font-lato-medium text-gray-500 ml-1" numberOfLines={1}>
-                            {getLocation(item)}
-                        </Text>
-                    </View>
-
-                    <View className="flex-row flex-wrap gap-2 mt-2">
-                        {projectType && (
-                            <View className="px-2 py-1 rounded-full bg-[#F0EFFD]">
-                                <Text className="text-[10px] font-lato-bold text-[#4A43EC] capitalize">
-                                    {projectType}
-                                </Text>
-                            </View>
-                        )}
-                        {distance && (
-                            <View className="px-2 py-1 rounded-full bg-gray-100">
-                                <Text className="text-[10px] font-lato-medium text-gray-600">
-                                    {distance}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-
-                    <Text className="text-sm font-lato-bold text-[#4A43EC] mt-2" numberOfLines={1}>
-                        {formatPrice(item)}
-                    </Text>
-                </View>
-            </TouchableOpacity>
-        );
-    };
+    const listEmptyComponent = useMemo(() => (
+        <View className="flex-1 items-center justify-center py-16">
+            <View className="w-14 h-14 rounded-2xl bg-white border border-gray-200 items-center justify-center mb-3">
+                <Ionicons name="heart-outline" size={24} color="#4A43EC" />
+            </View>
+            <Text className="text-sm font-lato-bold text-black">
+                {error ? "Nearby projects unavailable" : "No nearby projects found"}
+            </Text>
+            <Text className="text-xs font-lato-medium text-gray-500 mt-1 text-center px-8">
+                {error || "Try selecting a different property location."}
+            </Text>
+            {error && (
+                <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={loadNearbyProjects}
+                    className="mt-4 bg-[#4A43EC] rounded-xl px-5 py-3"
+                >
+                    <Text className="text-xs font-lato-bold text-white">Retry</Text>
+                </TouchableOpacity>
+            )}
+        </View>
+    ), [error, loadNearbyProjects]);
 
     return (
         <View className="flex-1 bg-[#F8F9FE]" style={{ paddingTop: insets.top }}>
             <StatusBar barStyle="dark-content" backgroundColor="#F8F9FE" />
 
             <View className="flex-row items-center justify-between px-5 py-4">
-                <Pressable onPress={() => router.back()} className="p-1">
+                <Pressable onPress={handleBack} className="p-1">
                     <Ionicons name="arrow-back" size={21} color="#111" />
                 </Pressable>
                 <Text className="text-base font-lato-bold text-black">Nearby Projects</Text>
@@ -187,36 +234,19 @@ export default function NearbyProjects() {
                 <FlatList
                     className="flex-1 px-5"
                     data={nearbyProjects}
-                    keyExtractor={(item, index) => String(item.id || item.slug || index)}
+                    keyExtractor={keyExtractor}
                     renderItem={renderProject}
                     showsVerticalScrollIndicator={false}
                     alwaysBounceVertical={true}
                     refreshControl={
                         <RefreshControl refreshing={nearbyProjectsLoading} onRefresh={loadNearbyProjects} colors={["#4A43EC"]} tintColor="#4A43EC" />
                     }
-                    contentContainerStyle={{ paddingBottom: insets.bottom + 28, flexGrow: 1 }}
-                    ListEmptyComponent={
-                        <View className="flex-1 items-center justify-center py-16">
-                            <View className="w-14 h-14 rounded-2xl bg-white border border-gray-200 items-center justify-center mb-3">
-                                <Ionicons name="heart-outline" size={24} color="#4A43EC" />
-                            </View>
-                            <Text className="text-sm font-lato-bold text-black">
-                                {error ? "Nearby projects unavailable" : "No nearby projects found"}
-                            </Text>
-                            <Text className="text-xs font-lato-medium text-gray-500 mt-1 text-center px-8">
-                                {error || "Try selecting a different property location."}
-                            </Text>
-                            {error && (
-                                <TouchableOpacity
-                                    activeOpacity={0.85}
-                                    onPress={loadNearbyProjects}
-                                    className="mt-4 bg-[#4A43EC] rounded-xl px-5 py-3"
-                                >
-                                    <Text className="text-xs font-lato-bold text-white">Retry</Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    }
+                    contentContainerStyle={contentContainerStyle}
+                    ListEmptyComponent={listEmptyComponent}
+                    maxToRenderPerBatch={8}
+                    windowSize={5}
+                    initialNumToRender={6}
+                    removeClippedSubviews={Platform.OS === 'android'}
                 />
             )}
         </View>

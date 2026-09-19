@@ -1,19 +1,34 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { View, Text, Pressable, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
+const SCROLL_CONTENT_STYLE = { paddingBottom: 50 };
+const BACK_HIT_SLOP = 12;
+
 export default function BrokerPrivacyPolicyScreen() {
   const router = useRouter();
+
+  const handleBack = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  const handleOpenTerms = useCallback(() => {
+    router.push("/(screens)/terms-and-conditions");
+  }, [router]);
+
+  const handleOpenFaqs = useCallback(() => {
+    router.push("/(screens)/faqs");
+  }, [router]);
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-[#F8F9FE]">
       {/* Top Header */}
       <View className="flex-row items-center justify-between px-5 py-4 bg-white border-b border-gray-100">
         <Pressable
-          onPress={() => router.back()}
-          hitSlop={12}
+          onPress={handleBack}
+          hitSlop={BACK_HIT_SLOP}
           className="w-10 h-10 rounded-full bg-gray-50 items-center justify-center border border-gray-200"
         >
           <Ionicons name="arrow-back" size={20} color="#111827" />
@@ -26,7 +41,7 @@ export default function BrokerPrivacyPolicyScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 50 }}
+        contentContainerStyle={SCROLL_CONTENT_STYLE}
         className="px-5"
       >
         {/* Document Header Card */}
@@ -192,7 +207,7 @@ export default function BrokerPrivacyPolicyScreen() {
         {/* Footer Links */}
         <View className="flex-row items-center justify-between p-4 bg-gray-100 rounded-xl mt-2">
           <Pressable
-            onPress={() => router.push("/(screens)/terms-and-conditions")}
+            onPress={handleOpenTerms}
             className="flex-row items-center"
           >
             <Text className="text-xs font-manrope-bold text-[#4A43EC] mr-1">
@@ -201,7 +216,7 @@ export default function BrokerPrivacyPolicyScreen() {
             <Ionicons name="arrow-forward" size={14} color="#4A43EC" />
           </Pressable>
           <Pressable
-            onPress={() => router.push("/(screens)/faqs")}
+            onPress={handleOpenFaqs}
             className="flex-row items-center"
           >
             <Text className="text-xs font-manrope-bold text-gray-700 mr-1">

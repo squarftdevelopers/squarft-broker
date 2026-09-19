@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { ActivityIndicator, Alert, Image, Keyboard, Modal, Platform, Pressable, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,6 +36,7 @@ const kindOptions = {
   plot: ["Residential Plot", "Commercial Plot", "Agricultural Plot"],
 };
 const areaUnits = ["Square Feet (sq ft)", "Square Meter (sq m)", "Acre", "Hectare", "Square Yard (gaj)", "Bigha", "Biswa", "Katha / Kattha", "Guntha", "Cent", "Kanal", "Marla", "Ankanam", "Decimal"];
+const AREA_UNIT_ITEMS = areaUnits.map(x => ({ id: x, name: x }));
 const steps = ["Basic Details", "Owner Detail", "Property Detail", "Image & Price"];
 
 const Field = ({ label, value, onChangeText, placeholder, keyboardType, left, right, style }) => <View style={[{ marginBottom: 24 }, style]}>
@@ -122,8 +123,8 @@ export default function AddProperty() {
   useEffect(() => { setKind(current => (kindOptions[subType] || []).includes(current) ? current : (kindOptions[subType] || [""])[0]); }, [subType]);
   useEffect(() => { scrollRef.current?.scrollTo?.({ y: 0, animated: false }); }, [step]);
 
-  const selectedProject = projects.find(p => p.id === details.projectId);
-  const selectedUnitLabel = details.areaUnit.split(" (")[0];
+  const selectedProject = useMemo(() => projects.find(p => p.id === details.projectId), [projects, details.projectId]);
+  const selectedUnitLabel = useMemo(() => details.areaUnit.split(" (")[0], [details.areaUnit]);
   const validate = () => {
     if (step === 1 && (!category || !subType || !kind)) return "Select the property category, type and subtype.";
     if (step === 2 && (!owner.name.trim() || !owner.phone.trim() || !owner.address.trim())) return "Enter owner name, contact number and address.";
@@ -227,7 +228,7 @@ export default function AddProperty() {
     <Text style={{ fontSize: 14, marginBottom: 14 }}>Agreement & Submission</Text><Pressable onPress={() => setPricing(p => ({ ...p, confirmed: !p.confirmed }))} style={{ flexDirection: "row", alignItems: "flex-start" }}><Ionicons name={pricing.confirmed ? "checkbox" : "square-outline"} size={20} color={pricing.confirmed ? PURPLE : "#999"} /><Text style={{ flex: 1, marginLeft: 10, fontSize: 12, lineHeight: 17 }}>I confirm that the provided details are accurate and that I am the legal owner or have the right to list this property for sale.</Text></Pressable>
   </>;
 
-  const pickerItems = picker === "project" ? projects : areaUnits.map(x => ({ id: x, name: x }));
+  const pickerItems = picker === "project" ? projects : AREA_UNIT_ITEMS;
   return <SafeAreaView style={{ flex: 1, backgroundColor: PURPLE }} edges={["top"]}><StatusBar barStyle="light-content" backgroundColor={PURPLE} />
     <View style={{ height: 176, paddingHorizontal: 22, paddingTop: 16 }}><View style={{ flexDirection: "row", alignItems: "center" }}>{step > 1 ? <Pressable onPress={() => setStep(step - 1)} hitSlop={15}><Ionicons name="arrow-back" color="#fff" size={24} /></Pressable> : <View style={{ width: 24 }} />}<Text style={{ flex: 1, textAlign: "center", color: "#fff", fontSize: 17, fontWeight: "700" }}>Add Property</Text><View style={{ width: 24 }} /></View><View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 52 }}>{steps.map((x, i) => { const stepNum = i + 1; const isCurrent = step === stepNum; const isPrevious = stepNum < step; return <Pressable key={x} onPress={() => { if (isPrevious) setStep(stepNum); }} disabled={!isPrevious} hitSlop={{ top: 12, bottom: 12, left: 6, right: 6 }} style={{ width: "24%", alignItems: "center" }}><View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 1, borderColor: "#fff", backgroundColor: isCurrent ? "#fff" : "transparent", alignItems: "center", justifyContent: "center", opacity: isCurrent || isPrevious ? 1 : 0.6 }}><Text style={{ color: isCurrent ? PURPLE : "#fff", fontSize: 11, fontWeight: isCurrent ? "700" : "500" }}>{stepNum}</Text></View><Text numberOfLines={1} style={{ color: "#fff", opacity: isCurrent ? 1 : isPrevious ? 0.9 : 0.6, fontSize: 10, marginTop: 9, fontWeight: isCurrent ? "600" : "400" }}>{x}</Text></Pressable>; })}</View></View>
     <View style={{ flex: 1, backgroundColor: "#fff", borderTopLeftRadius: 23, borderTopRightRadius: 23, overflow: "hidden" }}><ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 21, paddingTop: 22, paddingBottom: 150 + insets.bottom }}>{step === 1 ? renderStep1() : step === 2 ? renderStep2() : step === 3 ? renderStep3() : renderStep4()}</ScrollView><View style={{ position: "absolute", left: 19, right: 19, bottom: (Platform.OS === "ios" ? 76 : 66) + insets.bottom + 14 }}><TouchableOpacity disabled={busy} onPress={step === 4 ? submit : next} style={{ height: 51, borderRadius: 9, backgroundColor: PURPLE, alignItems: "center", justifyContent: "center", shadowColor: PURPLE, shadowOpacity: .25, shadowRadius: 9, elevation: 5 }}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff", fontSize: 15 }}>{step === 4 ? "Submit" : "Next"}</Text>}</TouchableOpacity></View></View>

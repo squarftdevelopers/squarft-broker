@@ -1,14 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, Pressable, TextInput, StatusBar, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addBankAccountApi } from '../../store/slices/walletSlice';
+
+const InputField = React.memo(({ label, placeholder, value, onChangeText, keyboardType = "default", autoCapitalize = "none" }) => (
+    <View className="mb-5">
+        <Text className="text-[14px] font-manrope-bold text-[#272727] mb-2">{label}</Text>
+        <View className="border border-gray-100 rounded-xl px-4 py-3.5">
+            <TextInput
+                className="text-[14px] font-manrope-medium text-[#272727]"
+                placeholder={placeholder}
+                placeholderTextColor="#9CA3AF"
+                value={value}
+                onChangeText={onChangeText}
+                keyboardType={keyboardType}
+                autoCapitalize={autoCapitalize}
+            />
+        </View>
+    </View>
+));
+
+InputField.displayName = 'InputField';
 
 const AddBankScreen = () => {
     const router = useRouter();
-    const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
 
     const [bankName, setBankName] = useState('');
@@ -17,7 +34,11 @@ const AddBankScreen = () => {
     const [ifsc, setIfsc] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    const handleAddBank = async () => {
+    const handleBack = useCallback(() => {
+        router.back();
+    }, [router]);
+
+    const handleAddBank = useCallback(async () => {
         if (submitting) return;
         if (!bankName || !accountNumber || !reAccountNumber || !ifsc) {
             Alert.alert("Error", "Please fill all fields");
@@ -42,23 +63,7 @@ const AddBankScreen = () => {
         } finally {
             setSubmitting(false);
         }
-    };
-
-    const InputField = ({ label, placeholder, value, onChangeText, keyboardType = "default" }) => (
-        <View className="mb-5">
-            <Text className="text-[14px] font-manrope-bold text-[#272727] mb-2">{label}</Text>
-            <View className="border border-gray-100 rounded-xl px-4 py-3.5">
-                <TextInput
-                    className="text-[14px] font-manrope-medium text-[#272727]"
-                    placeholder={placeholder}
-                    placeholderTextColor="#9CA3AF"
-                    value={value}
-                    onChangeText={onChangeText}
-                    keyboardType={keyboardType}
-                />
-            </View>
-        </View>
-    );
+    }, [submitting, bankName, accountNumber, reAccountNumber, ifsc, dispatch, router]);
 
     return (
         <View className="flex-1 bg-white">
@@ -66,7 +71,7 @@ const AddBankScreen = () => {
 
             {/* Header */}
             <View className="pt-[55px] pb-4 px-6 flex-row items-center justify-between border-b border-gray-50">
-                <Pressable onPress={() => router.back()} className="p-1">
+                <Pressable onPress={handleBack} className="p-1">
                     <Ionicons name="arrow-back" size={22} color="black" />
                 </Pressable>
                 <Text className="text-black text-[18px] font-manrope-bold">Add Bank</Text>

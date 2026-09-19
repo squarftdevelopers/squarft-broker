@@ -80,7 +80,6 @@ export default function KycScreen() {
   const dispatch = useDispatch();
   const { token, kyc } = useSelector((state) => state.auth);
   const submittingRef = useRef(false);
-  const [fetchWarnMsg, setFetchWarnMsg] = useState('');
   const [remoteKyc, setRemoteKyc] = useState(kyc || null);
   const [status, setStatus] = useState(remoteKyc?.verification_status || 'missing');
   const [rejectionReason, setRejectionReason] = useState('');
@@ -96,7 +95,6 @@ export default function KycScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const loadKycStatus = useCallback(async (preserveDraft = false) => {
     if (!preserveDraft) setFetchingKyc(true);
-    setFetchWarnMsg('');
     try {
       // unwrap: fulfilled=data|null, rejected=throws
       const rawData = token
@@ -118,10 +116,9 @@ export default function KycScreen() {
       );
       setRejectionReason(normalized.rejection_reason || '');
       dispatch(setKycCompleted(normalized.verification_status === 'verified'));
-    } catch (error) {
-      // Non-fatal: fall back to upload form and show a small warning
+    } catch (_error) {
+      // Non-fatal: fall back to upload form
       setStatus('missing');
-      setFetchWarnMsg('Could not load existing KYC info. You can still upload your documents.');
     } finally {
       setFetchingKyc(false);
     }

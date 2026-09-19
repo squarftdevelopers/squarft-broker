@@ -1,19 +1,34 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { View, Text, Pressable, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
+const SCROLL_CONTENT_STYLE = { paddingBottom: 50 };
+const BACK_HIT_SLOP = 12;
+
 export default function BrokerTermsAndConditionsScreen() {
   const router = useRouter();
+
+  const handleBack = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  const handleOpenPrivacyPolicy = useCallback(() => {
+    router.push("/(screens)/privacy-policy");
+  }, [router]);
+
+  const handleOpenContactDesk = useCallback(() => {
+    router.push("/(screens)/contact-us");
+  }, [router]);
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-[#F8F9FE]">
       {/* Top Header */}
       <View className="flex-row items-center justify-between px-5 py-4 bg-white border-b border-gray-100">
         <Pressable
-          onPress={() => router.back()}
-          hitSlop={12}
+          onPress={handleBack}
+          hitSlop={BACK_HIT_SLOP}
           className="w-10 h-10 rounded-full bg-gray-50 items-center justify-center border border-gray-200"
         >
           <Ionicons name="arrow-back" size={20} color="#111827" />
@@ -26,7 +41,7 @@ export default function BrokerTermsAndConditionsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 50 }}
+        contentContainerStyle={SCROLL_CONTENT_STYLE}
         className="px-5"
       >
         {/* Document Header Card */}
@@ -91,7 +106,7 @@ export default function BrokerTermsAndConditionsScreen() {
             3. Accurate Information and Documents
           </Text>
           <Text className="text-xs font-manrope text-gray-600 leading-relaxed">
-            Information, documents, photographs, property/project details, KYC records, payment references, feedback and other submissions must be accurate and lawfully provided. Do not impersonate another person, upload forged or misleading documents, submit content without authority, or misuse another person's personal information.
+            Information, documents, photographs, property/project details, KYC records, payment references, feedback and other submissions must be accurate and lawfully provided. Do not impersonate another person, upload forged or misleading documents, submit content without authority, or misuse another person&apos;s personal information.
           </Text>
         </View>
 
@@ -168,7 +183,7 @@ export default function BrokerTermsAndConditionsScreen() {
         {/* Footer Links */}
         <View className="flex-row items-center justify-between p-4 bg-gray-100 rounded-xl mt-2">
           <Pressable
-            onPress={() => router.push("/(screens)/privacy-policy")}
+            onPress={handleOpenPrivacyPolicy}
             className="flex-row items-center"
           >
             <Text className="text-xs font-manrope-bold text-[#4A43EC] mr-1">
@@ -177,7 +192,7 @@ export default function BrokerTermsAndConditionsScreen() {
             <Ionicons name="arrow-forward" size={14} color="#4A43EC" />
           </Pressable>
           <Pressable
-            onPress={() => router.push("/(screens)/contact-us")}
+            onPress={handleOpenContactDesk}
             className="flex-row items-center"
           >
             <Text className="text-xs font-manrope-bold text-gray-700 mr-1">

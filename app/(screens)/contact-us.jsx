@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { View, Text, TextInput, Pressable, ScrollView, Linking, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,6 +17,12 @@ const BROKER_CATEGORIES = [
   "Other"
 ];
 
+const SCROLL_CONTENT_STYLE = { paddingBottom: 50 };
+const BACK_HIT_SLOP = 12;
+const EMAIL_URL = "mailto:support@squarft.com?subject=Squar%20FT%20Channel%20Partner%20Support";
+const PHONE_URL = "tel:+918225000092";
+const WHATSAPP_URL = "https://wa.me/918225000092?text=Hello%20Squar%20FT%20Partner%20Desk";
+
 export default function BrokerContactUsScreen() {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState(BROKER_CATEGORIES[0]);
@@ -25,19 +31,23 @@ export default function BrokerContactUsScreen() {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const handleOpenEmail = () => {
-    Linking.openURL("mailto:support@squarft.com?subject=Squar%20FT%20Channel%20Partner%20Support");
-  };
+  const handleBack = useCallback(() => {
+    router.back();
+  }, [router]);
 
-  const handleCall = () => {
-    Linking.openURL("tel:+918225000092");
-  };
+  const handleOpenEmail = useCallback(() => {
+    Linking.openURL(EMAIL_URL);
+  }, []);
 
-  const handleWhatsApp = () => {
-    Linking.openURL("https://wa.me/918225000092?text=Hello%20Squar%20FT%20Partner%20Desk");
-  };
+  const handleCall = useCallback(() => {
+    Linking.openURL(PHONE_URL);
+  }, []);
 
-  const handleSubmitTicket = async () => {
+  const handleWhatsApp = useCallback(() => {
+    Linking.openURL(WHATSAPP_URL);
+  }, []);
+
+  const handleSubmitTicket = useCallback(async () => {
     if (!subject.trim()) {
       Alert.alert("Required Field", "Please enter a subject for your request.");
       return;
@@ -79,15 +89,15 @@ export default function BrokerContactUsScreen() {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [selectedCategory, subject, referenceId, message]);
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-[#F8F9FE]">
       {/* Top Header */}
       <View className="flex-row items-center justify-between px-5 py-4 bg-white border-b border-gray-100">
         <Pressable
-          onPress={() => router.back()}
-          hitSlop={12}
+          onPress={handleBack}
+          hitSlop={BACK_HIT_SLOP}
           className="w-10 h-10 rounded-full bg-gray-50 items-center justify-center border border-gray-200"
         >
           <Ionicons name="arrow-back" size={20} color="#111827" />
@@ -100,7 +110,7 @@ export default function BrokerContactUsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 50 }}
+        contentContainerStyle={SCROLL_CONTENT_STYLE}
         className="px-5"
       >
         {/* Security Warning Notice */}

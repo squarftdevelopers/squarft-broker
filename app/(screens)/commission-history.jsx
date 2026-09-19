@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { View, Text, Pressable, ScrollView, StatusBar, TextInput, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -6,24 +6,36 @@ import { useSelector, useDispatch } from 'react-redux';
 import { fetchCommissionHistory } from '../../store/slices/walletSlice';
 import CommissionFilterModal from '../../components/CommissionFilterModal';
 
+const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric'
+    });
+};
+
+const formatAmount = (amount) =>
+    `\u20B9${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
 const CommissionHistoryScreen = () => {
     const router = useRouter();
     const dispatch = useDispatch();
-    const { commissions, loading, error } = useSelector((state) => state.wallet);
+    const commissions = useSelector((state) => state.wallet?.commissions);
+    const loading = useSelector((state) => state.wallet?.loading);
+    const error = useSelector((state) => state.wallet?.error);
     const [searchText, setSearchText] = useState('');
     const [filterModalVisible, setFilterModalVisible] = useState(false);
     const [statusFilter, setStatusFilter] = useState('all');
     const [dateFilter, setDateFilter] = useState('all');
     const [refreshing, setRefreshing] = useState(false);
 
-    const onRefresh = async () => {
+    const onRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
             await dispatch(fetchCommissionHistory({ page: 1, limit: 100 }));
         } finally {
             setRefreshing(false);
         }
-    };
+    }, [dispatch]);
 
     useEffect(() => {
         console.log('🔍 [commission-history] Fetching commission history...');
@@ -89,27 +101,17 @@ const CommissionHistoryScreen = () => {
         return result;
     }, [searchText, commissions, statusFilter, dateFilter]);
 
-    const handleOpenFilter = () => {
+    const handleOpenFilter = useCallback(() => {
         console.log(' FILTER BUTTON PRESSED - Opening modal!');
         setFilterModalVisible(true);
-    };
+    }, []);
 
-    const handleApplyFilters = (filters) => {
+    const handleApplyFilters = useCallback((filters) => {
         console.log(' [commission-history] Filters applied:', filters);
         setStatusFilter(filters.status);
         setDateFilter(filters.dateFilter);
         setFilterModalVisible(false);
-    };
-
-    const formatDate = (dateStr) => {
-        if (!dateStr) return '';
-        return new Date(dateStr).toLocaleDateString('en-IN', {
-            day: '2-digit', month: 'short', year: 'numeric'
-        });
-    };
-
-    const formatAmount = (amount) =>
-        `\u20B9${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+    }, []);
 
     return (
         <View className="flex-1 bg-white">

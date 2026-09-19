@@ -1,9 +1,9 @@
-import { View, Text, FlatList, TextInput, TouchableOpacity, Image, Modal, StatusBar, ActivityIndicator, Alert } from "react-native";
+import { View, Text, FlatList, TextInput, TouchableOpacity, Modal, StatusBar, ActivityIndicator, Alert } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, memo } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { fetchMyAddedProperties, deleteProperty, fetchPropertyDetails } from "../../store/slices/myAddedSlice";
 import PropertyDetailSheet from "../../components/property/PropertyDetailSheet";
@@ -51,7 +51,7 @@ const buildMyAddedFilters = ({ search, filters }) => {
     return backendFilters;
 };
 
-function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
+const PropertyCard = memo(function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
     const [menuOpen, setMenuOpen] = useState(false);
     
     // Get cover image from media array
@@ -90,22 +90,22 @@ function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
     // Total area - use total_area_sqft field, not 'area' (which is locality name)
     const totalArea = item.total_area_sqft || item.total_area;
 
-    const handleEdit = () => {
+    const handleEdit = useCallback(() => {
         console.log('[PropertyCard] Edit button pressed for item:', item.id);
         setMenuOpen(false);
         onEditPress?.(item);
-    };
+    }, [item, onEditPress]);
 
-    const handleDelete = () => {
+    const handleDelete = useCallback(() => {
         console.log('[PropertyCard] Delete button pressed for item:', item.id);
         setMenuOpen(false);
         onDeletePress?.(item.id);
-    };
+    }, [item.id, onDeletePress]);
 
-    const toggleMenu = () => {
+    const toggleMenu = useCallback(() => {
         console.log('≡ƒöÿ [PropertyCard] Toggling menu, current:', menuOpen);
         setMenuOpen(prev => !prev);
-    };
+    }, [menuOpen]);
 
     return (
         <TouchableOpacity 
@@ -190,7 +190,7 @@ function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
             </View>
         </TouchableOpacity>
     );
-}
+});
 
 export default function Favourite() {
     const insets = useSafeAreaInsets();
@@ -237,7 +237,7 @@ export default function Favourite() {
         return () => clearTimeout(timer);
     }, [search, dispatch, activeFilters]);
 
-    const handleApplyFilters = (filters) => {
+    const handleApplyFilters = useCallback((filters) => {
         console.log('≡ƒöì [favourite.jsx] Filters received from modal:', filters);
         const nextActiveFilters = hasSelectedFilters(filters) ? filters : null;
         const backendFilters = buildMyAddedFilters({ search, filters: nextActiveFilters });
@@ -245,9 +245,9 @@ export default function Favourite() {
         setActiveFilters(nextActiveFilters);
         console.log('≡ƒöì [favourite.jsx] Backend filters being sent:', backendFilters);
         dispatch(fetchMyAddedProperties(backendFilters));
-    };
+    }, [search, dispatch]);
 
-    const handleConfirmDelete = async () => {
+    const handleConfirmDelete = useCallback(async () => {
         console.log('[favourite.jsx] handleConfirmDelete called with deleteId:', deleteId);
         setDeleting(true);
         try {
@@ -260,9 +260,9 @@ export default function Favourite() {
         } finally {
             setDeleting(false);
         }
-    };
+    }, [deleteId, dispatch]);
 
-    const handleEditPress = (item) => {
+    const handleEditPress = useCallback((item) => {
         console.log('[favourite.jsx] handleEditPress called with item:', item);
         dispatch(fetchPropertyDetails(item.id))
             .unwrap()
@@ -277,7 +277,7 @@ export default function Favourite() {
                 console.error('[favourite.jsx] Failed to load details:', error);
                 Alert.alert('Error', `Failed to load details: ${error}`);
             });
-    };
+    }, [dispatch, router]);
 
     const handlePropertyPress = useCallback((item) => {
         if (!item?.id) return;
@@ -317,6 +317,20 @@ export default function Favourite() {
         setPropertyDetailLoading(false);
         setPropertyDetailError(null);
     }, []);
+
+    const keyExtractor = useCallback((item) => item.id.toString(), []);
+
+    const renderItem = useCallback(
+        ({ item }) => (
+            <PropertyCard 
+                item={item} 
+                onDeletePress={setDeleteId}
+                onEditPress={handleEditPress}
+                onPress={handlePropertyPress}
+            />
+        ),
+        [handleEditPress, handlePropertyPress]
+    );
 
     if (loading && properties.length === 0) {
         return (
@@ -384,17 +398,13 @@ export default function Favourite() {
             ) : (
                 <FlatList
                     data={properties}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                        <PropertyCard 
-                            item={item} 
-                            onDeletePress={setDeleteId}
-                            onEditPress={handleEditPress}
-                            onPress={handlePropertyPress}
-                        />
-                    )}
+                    keyExtractor={keyExtractor}
+                    renderItem={renderItem}
                     contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 150, paddingTop: 10 }}
                     showsVerticalScrollIndicator={false}
+                    initialNumToRender={8}
+                    maxToRenderPerBatch={10}
+                    windowSize={5}
                 />
             )}
 

@@ -21,8 +21,12 @@ export default function ProjectDealStatus() {
     finally { setLoading(false); }
   }, [id]);
   useFocusEffect(useCallback(() => { load(); }, [load]));
+  const handleBack = useCallback(() => {
+    router.back();
+  }, [router]);
+
   return <SafeAreaView style={{flex:1,backgroundColor:'#F8FAFC'}}>
-    <TouchableOpacity onPress={() => router.back()} style={{padding:20,flexDirection:'row',gap:14,alignItems:'center'}}><Ionicons name="arrow-back" size={24}/><Text style={{fontSize:20,fontWeight:'700'}}>Deal details</Text></TouchableOpacity>
+    <TouchableOpacity onPress={handleBack} style={{padding:20,flexDirection:'row',gap:14,alignItems:'center'}}><Ionicons name="arrow-back" size={24}/><Text style={{fontSize:20,fontWeight:'700'}}>Deal details</Text></TouchableOpacity>
     <ScrollView
       contentContainerStyle={{padding:20,gap:16}}
       alwaysBounceVertical={true}

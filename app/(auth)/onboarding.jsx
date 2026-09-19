@@ -4,15 +4,17 @@ import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useCallback } from "react";
+
 const onboardingImage = require("../../assets/images/splash-mobile.gif");
 
 export default function Onboarding() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
 
-    const handleNext = () => {
+    const handleNext = useCallback(() => {
         router.replace("/(auth)/login");
-    };
+    }, [router]);
 
     return (
         <View className="flex-1 bg-white">

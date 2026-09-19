@@ -2,18 +2,55 @@ import { View, Text, Pressable, StatusBar, Platform, ScrollView, Image, Activity
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, Stack } from "expo-router";
 import { useSelector, useDispatch } from "react-redux";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { markAllAsWatched, markAllReadApi, markAsWatched, markNotificationReadApi, fetchNotifications } from "../../store/slices/notificationSlice";
 import { resolveNotificationRoute } from "../../utils/notificationRoutes";
+
+const EMPTY_NOTIFICATIONS = [];
+
+const renderNotificationIcon = (type) => {
+  switch (type) {
+    case 'customer':
+      return (
+        <View className="w-12 h-12 rounded-full bg-[#FFF3D6] items-center justify-center">
+          <MaterialCommunityIcons name="account-search" size={24} color="#FFB800" />
+        </View>
+      );
+    case 'success':
+      return (
+        <View className="w-12 h-12 rounded-full bg-[#E8EAFD] items-center justify-center">
+          <Ionicons name="checkmark-circle" size={28} color="#4A43EC" />
+        </View>
+      );
+    case 'error':
+      return (
+        <View className="w-12 h-12 rounded-full bg-[#FEEBF0] items-center justify-center">
+          <Ionicons name="close-circle" size={28} color="#FF3B30" />
+        </View>
+      );
+    case 'love':
+      return (
+        <View className="w-12 h-12 rounded-full bg-[#FFEBEE] items-center justify-center">
+          <Ionicons name="heart" size={24} color="#FF3B30" />
+        </View>
+      );
+    default:
+      return (
+        <View className="w-12 h-12 rounded-full bg-[#EBF1FF] items-center justify-center">
+          <Ionicons name="notifications" size={24} color="#4A43EC" />
+        </View>
+      );
+  }
+};
 
 export default function Notifications() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const notifications = useSelector((state) => state.notifications?.list || []);
+  const notifications = useSelector((state) => state.notifications?.list) ?? EMPTY_NOTIFICATIONS;
   const loading = useSelector((state) => state.notifications?.loading || false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await dispatch(fetchNotifications());
@@ -22,7 +59,7 @@ export default function Notifications() {
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(fetchNotifications()).then(() => {
@@ -31,7 +68,7 @@ export default function Notifications() {
     });
   }, [dispatch]);
 
-  const handleNotificationPress = (item) => {
+  const handleNotificationPress = useCallback((item) => {
     dispatch(markAsWatched(item.id));
     dispatch(markNotificationReadApi(item.id));
 
@@ -41,42 +78,12 @@ export default function Notifications() {
         router.push(route);
       }
     }
-  };
+  }, [dispatch, router]);
 
-  const getIcon = (type) => {
-    switch (type) {
-      case 'customer':
-        return (
-          <View className="w-12 h-12 rounded-full bg-[#FFF3D6] items-center justify-center">
-            <MaterialCommunityIcons name="account-search" size={24} color="#FFB800" />
-          </View>
-        );
-      case 'success':
-        return (
-          <View className="w-12 h-12 rounded-full bg-[#E8EAFD] items-center justify-center">
-            <Ionicons name="checkmark-circle" size={28} color="#4A43EC" />
-          </View>
-        );
-      case 'error':
-        return (
-          <View className="w-12 h-12 rounded-full bg-[#FEEBF0] items-center justify-center">
-            <Ionicons name="close-circle" size={28} color="#FF3B30" />
-          </View>
-        );
-      case 'love':
-        return (
-          <View className="w-12 h-12 rounded-full bg-[#FFEBEE] items-center justify-center">
-            <Ionicons name="heart" size={24} color="#FF3B30" />
-          </View>
-        );
-      default:
-        return (
-          <View className="w-12 h-12 rounded-full bg-[#EBF1FF] items-center justify-center">
-            <Ionicons name="notifications" size={24} color="#4A43EC" />
-          </View>
-        );
-    }
-  };
+  const handleMarkAllRead = useCallback(() => {
+    dispatch(markAllAsWatched());
+    dispatch(markAllReadApi());
+  }, [dispatch]);
 
   return (
     <View className="flex-1 bg-white">
@@ -92,10 +99,7 @@ export default function Notifications() {
         </Pressable>
         <Text className="text-[17px] text-[#1F2937] font-lato-bold">Notifications</Text>
         <Pressable 
-          onPress={() => {
-            dispatch(markAllAsWatched());
-            dispatch(markAllReadApi());
-          }}
+          onPress={handleMarkAllRead}
           className="bg-[#4A43EC]/10 px-3 py-1.5 rounded-lg"
         >
           <Text className="text-[#4A43EC] text-[11px] font-manrope-bold">Mark all read</Text>
@@ -139,7 +143,7 @@ export default function Notifications() {
               onPress={() => handleNotificationPress(item)}
               className="flex-row mb-6 relative active:opacity-75"
             >
-              {getIcon(item.type)}
+              {renderNotificationIcon(item.type)}
               <View className="ml-4 flex-1">
                 <Text className={`text-[15px] ${item.watched ? 'text-[#6B7280]' : 'text-[#1F2937]'} font-manrope-bold mb-0.5`}>
                   {item.title}

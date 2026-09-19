@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, memo } from "react";
 import {
   View,
   Text,
@@ -18,15 +18,57 @@ import SkeletonLoader from "../../components/SkeletonLoader";
 
 import TabTimeline from "../../components/customerDetails/TabTimeline";
 
+const formatCurrency = (val) => {
+  if (!val) return "N/A";
+  if (val >= 10000000) {
+     return `₹ ${Math.floor(val/10000000)} Cr+`;
+  }
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(val).replace('₹', '₹ ');
+};
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return "N/A";
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
+const RequirementRow = memo(function RequirementRow({ icon, label, value, isMCI = false }) {
+  return (
+    <View className="flex-row items-center justify-between py-2.5">
+      <View className="flex-row items-center">
+        <View className="w-8 items-center">
+          {isMCI ? (
+            <MaterialCommunityIcons name={icon} size={18} color="#4A43EC" />
+          ) : (
+            <Ionicons name={icon} size={18} color="#4A43EC" />
+          )}
+        </View>
+        <Text className="text-gray-400 text-sm font-lato-regular ml-1">{label}</Text>
+      </View>
+      <Text className="text-black text-sm font-lato-regular text-right flex-1 ml-4" numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+});
+
 export default function CustomerDetails() {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const { id } = useLocalSearchParams();
-  const requirement = useSelector((state) => state.requirements.currentRequirement);
-  const loading = useSelector((state) => state.requirements.loading);
+  const requirement = useSelector((state) => state.requirements?.currentRequirement);
+  const loading = useSelector((state) => state.requirements?.loading);
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     if (!id) return;
     setRefreshing(true);
     try {
@@ -34,35 +76,13 @@ export default function CustomerDetails() {
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [id, dispatch]);
 
   useEffect(() => {
     if (id) {
       dispatch(fetchRequirementById(id));
     }
   }, [dispatch, id]);
-
-  const formatCurrency = (val) => {
-    if (!val) return "N/A";
-    if (val >= 10000000) {
-       return `₹ ${Math.floor(val/10000000)} Cr+`;
-    }
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(val).replace('₹', '₹ ');
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "N/A";
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
 
   if (loading && !requirement) {
     return (
@@ -86,24 +106,6 @@ export default function CustomerDetails() {
       </View>
     );
   }
-
-  const RequirementRow = ({ icon, label, value, isMCI = false }) => (
-    <View className="flex-row items-center justify-between py-2.5">
-      <View className="flex-row items-center">
-        <View className="w-8 items-center">
-          {isMCI ? (
-            <MaterialCommunityIcons name={icon} size={18} color="#4A43EC" />
-          ) : (
-            <Ionicons name={icon} size={18} color="#4A43EC" />
-          )}
-        </View>
-        <Text className="text-gray-400 text-sm font-lato-regular ml-1">{label}</Text>
-      </View>
-      <Text className="text-black text-sm font-lato-regular text-right flex-1 ml-4" numberOfLines={1}>
-        {value}
-      </Text>
-    </View>
-  );
 
   return (
     <View className="flex-1 bg-[#F9FAFF]">

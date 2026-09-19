@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { View, Text, TextInput, Pressable, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -67,17 +67,74 @@ const FAQS_DATA = [
   }
 ];
 
+const SCROLL_CONTENT_STYLE = { paddingBottom: 40 };
+const BACK_HIT_SLOP = 12;
+const CLOSE_HIT_SLOP = 8;
+
+const FaqItem = React.memo(({ item, index, isExpanded, onToggle }) => {
+  const handleToggle = useCallback(() => {
+    onToggle(item.id);
+  }, [item.id, onToggle]);
+
+  return (
+    <View className="bg-white rounded-xl mb-3 border border-gray-200 overflow-hidden shadow-xs">
+      <Pressable
+        onPress={handleToggle}
+        className="p-4 flex-row items-center justify-between"
+      >
+        <View className="flex-row items-center flex-1 pr-3">
+          <View className="w-6 h-6 rounded-full bg-[#EEECFF] items-center justify-center mr-3">
+            <Text className="text-xs font-manrope-bold text-[#4A43EC]">
+              {index + 1}
+            </Text>
+          </View>
+          <Text className="flex-1 text-sm font-manrope-bold text-gray-900 leading-snug">
+            {item.question}
+          </Text>
+        </View>
+        <Ionicons
+          name={isExpanded ? "chevron-up" : "chevron-down"}
+          size={18}
+          color="#6B7280"
+        />
+      </Pressable>
+
+      {isExpanded && (
+        <View className="px-4 pb-4 pt-1 border-t border-gray-100 bg-[#FAFAFF]">
+          <Text className="text-xs font-manrope text-gray-600 leading-relaxed">
+            {item.answer}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+});
+
+FaqItem.displayName = "FaqItem";
+
 export default function BrokerFAQsScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedIds, setExpandedIds] = useState({ "1": true });
 
-  const toggleExpand = (id) => {
+  const handleBack = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery("");
+  }, []);
+
+  const handleOpenContactDesk = useCallback(() => {
+    router.push("/(screens)/contact-us");
+  }, [router]);
+
+  const toggleExpand = useCallback((id) => {
     setExpandedIds((prev) => ({
       ...prev,
       [id]: !prev[id]
     }));
-  };
+  }, []);
 
   const filteredFaqs = useMemo(() => {
     if (!searchQuery.trim()) return FAQS_DATA;
@@ -94,8 +151,8 @@ export default function BrokerFAQsScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between px-5 py-4 bg-white border-b border-gray-100">
         <Pressable
-          onPress={() => router.back()}
-          hitSlop={12}
+          onPress={handleBack}
+          hitSlop={BACK_HIT_SLOP}
           className="w-10 h-10 rounded-full bg-gray-50 items-center justify-center border border-gray-200"
         >
           <Ionicons name="arrow-back" size={20} color="#111827" />
@@ -108,7 +165,7 @@ export default function BrokerFAQsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={SCROLL_CONTENT_STYLE}
       >
         {/* Search Bar */}
         <View className="px-5 pt-5 pb-2">
@@ -123,7 +180,7 @@ export default function BrokerFAQsScreen() {
               clearButtonMode="while-editing"
             />
             {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery("")} hitSlop={8}>
+              <Pressable onPress={handleClearSearch} hitSlop={CLOSE_HIT_SLOP}>
                 <Ionicons name="close-circle" size={18} color="#9CA3AF" />
               </Pressable>
             )}
@@ -149,51 +206,22 @@ export default function BrokerFAQsScreen() {
                 Try searching with different keywords or contact the partner desk.
               </Text>
               <Pressable
-                onPress={() => setSearchQuery("")}
+                onPress={handleClearSearch}
                 className="mt-4 px-4 py-2 bg-gray-100 rounded-lg"
               >
                 <Text className="text-xs font-manrope-semibold text-gray-700">Clear Search</Text>
               </Pressable>
             </View>
           ) : (
-            filteredFaqs.map((item, index) => {
-              const isExpanded = !!expandedIds[item.id];
-              return (
-                <View
-                  key={item.id}
-                  className="bg-white rounded-xl mb-3 border border-gray-200 overflow-hidden shadow-xs"
-                >
-                  <Pressable
-                    onPress={() => toggleExpand(item.id)}
-                    className="p-4 flex-row items-center justify-between"
-                  >
-                    <View className="flex-row items-center flex-1 pr-3">
-                      <View className="w-6 h-6 rounded-full bg-[#EEECFF] items-center justify-center mr-3">
-                        <Text className="text-xs font-manrope-bold text-[#4A43EC]">
-                          {index + 1}
-                        </Text>
-                      </View>
-                      <Text className="flex-1 text-sm font-manrope-bold text-gray-900 leading-snug">
-                        {item.question}
-                      </Text>
-                    </View>
-                    <Ionicons
-                      name={isExpanded ? "chevron-up" : "chevron-down"}
-                      size={18}
-                      color="#6B7280"
-                    />
-                  </Pressable>
-
-                  {isExpanded && (
-                    <View className="px-4 pb-4 pt-1 border-t border-gray-100 bg-[#FAFAFF]">
-                      <Text className="text-xs font-manrope text-gray-600 leading-relaxed">
-                        {item.answer}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })
+            filteredFaqs.map((item, index) => (
+              <FaqItem
+                key={item.id}
+                item={item}
+                index={index}
+                isExpanded={!!expandedIds[item.id]}
+                onToggle={toggleExpand}
+              />
+            ))
           )}
         </View>
 
@@ -211,7 +239,7 @@ export default function BrokerFAQsScreen() {
                 Our Channel Partner support desk is ready to resolve commission disputes, KYC verifications, and withdrawal inquiries.
               </Text>
               <Pressable
-                onPress={() => router.push("/(screens)/contact-us")}
+                onPress={handleOpenContactDesk}
                 className="mt-3.5 bg-[#4A43EC] self-start px-4 py-2 rounded-lg active:opacity-80 flex-row items-center"
               >
                 <Text className="text-xs font-manrope-bold text-white mr-1.5">

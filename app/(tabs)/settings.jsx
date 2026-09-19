@@ -16,15 +16,31 @@ import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-ic
 import { useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, deleteAccount, fetchUserProfile, fetchKyc, updateProfilePicture } from "../../store/slices/authSlice";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { sanitizeS3Url } from "../../utils/s3ImageUrl";
 
 const { width, height } = Dimensions.get("window");
 
+const MENU_ITEMS = [
+  { id: 1, label: "Home", icon: "home-outline", type: "ionicons" },
+  { id: 2, label: "My added", icon: "plus-box-outline", type: "material-community" },
+  {
+    id: 3,
+    label: "Term and conditions",
+    icon: "file-document-outline",
+    type: "material-community",
+  },
+  { id: 4, label: "Privacy Policy", icon: "shield-outline", type: "ionicons" },
+  { id: 5, label: "Contact Us", icon: "call-outline", type: "ionicons" },
+  { id: 7, label: "FAQs", icon: "help-circle-outline", type: "ionicons" },
+];
+
 export default function Settings() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const { user, loading, kyc } = useSelector((state) => state.auth);
+  const user = useSelector((state) => state.auth?.user);
+  const loading = useSelector((state) => state.auth?.loading);
+  const kyc = useSelector((state) => state.auth?.kyc);
   const [changingPhoto, setChangingPhoto] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,7 +51,7 @@ export default function Settings() {
     dispatch(fetchKyc());
   }, [dispatch]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await Promise.allSettled([
@@ -45,14 +61,14 @@ export default function Settings() {
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [dispatch]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     dispatch(logout());
     router.replace("/");
-  };
+  }, [dispatch, router]);
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = useCallback(() => {
     Alert.alert(
       "Delete Account",
       "Are you sure you want to delete your account? This action is permanent and cannot be undone.",
@@ -75,9 +91,9 @@ export default function Settings() {
         },
       ]
     );
-  };
+  }, [dispatch, router]);
 
-  const handleChangePhoto = async () => {
+  const handleChangePhoto = useCallback(async () => {
     if (changingPhoto || loading) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) { Alert.alert('Permission needed', 'Allow photo library access to change your profile image.'); return; }
@@ -87,23 +103,12 @@ export default function Settings() {
     try { await dispatch(updateProfilePicture(result.assets[0])).unwrap(); Alert.alert('Profile updated', 'Your profile image has been updated.'); }
     catch (error) { Alert.alert('Upload failed', error || 'Unable to update your profile image.'); }
     finally { setChangingPhoto(false); }
-  };
+  }, [changingPhoto, loading, dispatch]);
 
-  const menuItems = [
-    { id: 1, label: "Home", icon: "home-outline", type: "ionicons" },
-    { id: 2, label: "My added", icon: "plus-box-outline", type: "material-community" },
-    {
-      id: 3,
-      label: "Term and conditions",
-      icon: "file-document-outline",
-      type: "material-community",
-    },
-    { id: 4, label: "Privacy Policy", icon: "shield-outline", type: "ionicons" },
-    { id: 5, label: "Contact Us", icon: "call-outline", type: "ionicons" },
-    { id: 7, label: "FAQs", icon: "help-circle-outline", type: "ionicons" },
-  ];
-
-  const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.full_name || user?.name || "User";
+  const displayName = useMemo(
+    () => [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.full_name || user?.name || "User",
+    [user?.first_name, user?.last_name, user?.full_name, user?.name]
+  );
   const displayPhone = user?.phone || "N/A";
   const displayEmail = user?.email || "No email";
 
@@ -116,7 +121,10 @@ export default function Settings() {
     return null;
   };
 
-  const avatarUrl = getValidImageUrl(user?.profilePictureUrl, kyc?.profile_photo_url, user?.avatar_url);
+  const avatarUrl = useMemo(
+    () => getValidImageUrl(user?.profilePictureUrl, kyc?.profile_photo_url, user?.avatar_url),
+    [user?.profilePictureUrl, kyc?.profile_photo_url, user?.avatar_url]
+  );
 
   useEffect(() => {
     setAvatarLoadError(false);
@@ -277,7 +285,7 @@ export default function Settings() {
             shadowRadius: 10,
           }}
         >
-          {menuItems.map((item, index) => (
+          {MENU_ITEMS.map((item) => (
             <Pressable
               key={item.id}
               className="py-5 px-5 flex-row items-center"

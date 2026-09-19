@@ -27,11 +27,21 @@ const SkeletonBox = ({ width, height, borderRadius = 8, style }) => {
     );
 };
 
+const EMPTY_ARRAY = [];
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 const WalletScreen = () => {
     const router = useRouter();
     const { withdraw } = useLocalSearchParams();
     const dispatch = useDispatch();
-    const { balance, bankAccounts, transactions, loading: walletLoading } = useSelector((state) => state.wallet);
+    const balance = useSelector((state) => state.wallet?.balance);
+    const bankAccounts = useSelector((state) => state.wallet?.bankAccounts) ?? EMPTY_ARRAY;
+    const transactions = useSelector((state) => state.wallet?.transactions) ?? EMPTY_ARRAY;
     const [refreshing, setRefreshing] = useState(false);
     const [overviewLoading, setOverviewLoading] = useState(true);
     const [txLoading, setTxLoading] = useState(true);
@@ -40,7 +50,7 @@ const WalletScreen = () => {
     const [isWithdrawMode, setIsWithdrawMode] = useState(false);
     const [isWithdrawing, setIsWithdrawing] = useState(false);
 
-    const onRefresh = async () => {
+    const onRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
             await Promise.allSettled([
@@ -51,7 +61,7 @@ const WalletScreen = () => {
         } finally {
             setRefreshing(false);
         }
-    };
+    }, [dispatch]);
 
     useEffect(() => {
         setOverviewLoading(true);
@@ -96,7 +106,7 @@ const WalletScreen = () => {
         []
     );
 
-    const handleWithdraw = async () => {
+    const handleWithdraw = useCallback(async () => {
         if (isWithdrawing) return;
         if (!amount || isNaN(parseFloat(amount))) return;
         if (parseFloat(amount) > balance) {
@@ -125,21 +135,15 @@ const WalletScreen = () => {
         } finally {
             setIsWithdrawing(false);
         }
-    };
+    }, [isWithdrawing, amount, balance, selectedBankId, bankAccounts, dispatch]);
 
-    const formatDate = (dateStr) => {
-        if (!dateStr) return "";
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-    };
-
-    const handleBack = () => {
+    const handleBack = useCallback(() => {
         if (isWithdrawMode) {
             setIsWithdrawMode(false);
         } else {
             router.back();
         }
-    };
+    }, [isWithdrawMode, router]);
 
     return (
         <View className="flex-1 bg-white">

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -13,9 +13,10 @@ import {
   Platform,
   Keyboard,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { 
@@ -26,7 +27,6 @@ import {
   verifyCustomerOtp,
   clearCustomerOtpState
 } from "../../store/slices/requirementsSlice";
-import { ActivityIndicator } from "react-native";
 import { notifyClientSubmitted } from "../../utils/notificationHelpers";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -102,7 +102,10 @@ export default function AddCustomerRequirement() {
   const customerVerifiedToken = useSelector((state) => state.requirements.customerVerifiedToken);
   const otpLoading = useSelector((state) => state.requirements.otpLoading);
   const otpError = useSelector((state) => state.requirements.otpError);
-  const existingReq = isEdit ? requirementsList.find(r => r.id.toString() === id.toString()) : null;
+  const existingReq = useMemo(
+    () => (isEdit && Array.isArray(requirementsList) ? requirementsList.find(r => r.id.toString() === id.toString()) : null),
+    [isEdit, requirementsList, id]
+  );
 
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);

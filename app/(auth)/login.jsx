@@ -1,14 +1,15 @@
-import { Text, View, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform, ScrollView, ImageBackground, ActivityIndicator } from "react-native";
+import { Text, View, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform, ScrollView, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { clearError, clearOtp, setMobile, startLogin } from "../../store/slices/authSlice";
 const logo = require("../../assets/icons/app-icon.png");
 const COUNTRY_CODE = "+91";
 export default function Login() {
     const dispatch = useDispatch();
-    const { loading, error } = useSelector((s) => s.auth);
+    const loading = useSelector((s) => s.auth?.loading);
+    const error = useSelector((s) => s.auth?.error);
     const [localNumber, setLocalNumber] = useState("");
 
     useEffect(() => {
@@ -16,7 +17,7 @@ export default function Login() {
         dispatch(clearOtp());
     }, [dispatch]);
 
-    const handleSendOtp = async () => {
+    const handleSendOtp = useCallback(async () => {
         if (loading || localNumber.length !== 10) return;
         dispatch(clearError());
         const phone = `${COUNTRY_CODE}${localNumber}`;
@@ -25,7 +26,7 @@ export default function Login() {
         if (startLogin.fulfilled.match(result)) {
             router.push(result.payload.needsRegistration ? "/(auth)/register" : "/(auth)/otp-verification");
         }
-    };
+    }, [loading, localNumber, dispatch]);
 
     return (
         <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : "height"}>

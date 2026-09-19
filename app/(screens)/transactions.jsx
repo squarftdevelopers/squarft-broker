@@ -7,23 +7,31 @@ import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchTransactions } from '../../store/slices/walletSlice';
 
+const EMPTY_TRANSACTIONS = [];
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 const TransactionsScreen = () => {
     const dispatch = useDispatch();
     const router = useRouter();
     const bottomSheetModalRef = useRef(null);
-    const { transactions } = useSelector((state) => state.wallet);
+    const transactions = useSelector((state) => state.wallet?.transactions) ?? EMPTY_TRANSACTIONS;
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [searchText, setSearchText] = useState("");
     const [refreshing, setRefreshing] = useState(false);
 
-    const onRefresh = async () => {
+    const onRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
             await dispatch(fetchTransactions());
         } finally {
             setRefreshing(false);
         }
-    };
+    }, [dispatch]);
 
     React.useEffect(() => {
         dispatch(fetchTransactions());
@@ -37,12 +45,6 @@ const TransactionsScreen = () => {
             item.amount.toString().includes(searchText)
         );
     }, [searchText, transactions]);
-
-    const formatDate = (dateStr) => {
-        if (!dateStr) return "";
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-    };
 
     const snapPoints = useMemo(() => ['45%'], []);
 

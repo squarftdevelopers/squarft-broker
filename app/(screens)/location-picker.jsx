@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -84,6 +84,37 @@ const getDeviceLocationResult = async ({ latitude, longitude }) => {
     };
 };
 
+const LocationItem = React.memo(({ item, isSelected, onSelect }) => {
+    const handlePress = useCallback(() => {
+        onSelect(item);
+    }, [item, onSelect]);
+
+    return (
+        <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handlePress}
+            className={`flex-row rounded-xl border px-4 py-3 mb-3 ${isSelected ? "border-[#4A43EC] bg-[#F4F7FF]" : "border-gray-200 bg-white"}`}
+        >
+            <View className={`w-9 h-9 rounded-xl items-center justify-center mr-3 ${isSelected ? "bg-[#d2d0fa]" : "bg-gray-100"}`}>
+                <Ionicons name="location" size={17} color={isSelected ? "#4A43EC" : "#777"} />
+            </View>
+            <View className="flex-1">
+                <Text className="text-sm font-lato-bold text-black" numberOfLines={1}>
+                    {getShortAddress(item.address)}
+                </Text>
+                <Text className="text-xs font-lato-medium text-gray-500 mt-1" numberOfLines={2}>
+                    {item.address}
+                </Text>
+            </View>
+            {isSelected && (
+                <Ionicons name="checkmark-circle" size={20} color="#4A43EC" />
+            )}
+        </TouchableOpacity>
+    );
+});
+
+LocationItem.displayName = "LocationItem";
+
 export default function LocationPicker() {
     const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
@@ -93,7 +124,9 @@ export default function LocationPicker() {
     const initialAddress = firstParam(params.initialAddress);
     const initialLatitude = asCoordinate(firstParam(params.initialLatitude));
     const initialLongitude = asCoordinate(firstParam(params.initialLongitude));
-    const { results, loading, error } = useSelector((state) => state.location);
+    const results = useSelector((state) => state.location.results);
+    const loading = useSelector((state) => state.location.loading);
+    const error = useSelector((state) => state.location.error);
     const mapRef = useRef(null);
 
     const [query, setQuery] = useState(String(initialAddress || ""));
@@ -106,6 +139,10 @@ export default function LocationPicker() {
     const [locating, setLocating] = useState(false);
 
     const canUseManual = query.trim().length > 0;
+
+    const handleBack = useCallback(() => {
+        router.back();
+    }, []);
     
     useEffect(() => {
         dispatch(clearLocationResults());
@@ -120,13 +157,13 @@ export default function LocationPicker() {
                 } else {
                     console.log('❌ Location permission denied');
                 }
-            } catch (error) {
-                console.error('❌ Error requesting location permission:', error);
+            } catch (permError) {
+                console.error('❌ Error requesting location permission:', permError);
             }
         })();
     }, [dispatch]);
 
-    const handleSearch = async () => {
+    const handleSearch = useCallback(async () => {
         const cleanQuery = query.trim();
         if (cleanQuery.length < 3) {
             Alert.alert("Location", "Enter at least 3 characters to search.");
@@ -151,9 +188,9 @@ export default function LocationPicker() {
 
             Alert.alert("Location", searchError || "Unable to search locations.");
         }
-    };
+    }, [query, dispatch]);
 
-    const handleLocateMe = async () => {
+    const handleLocateMe = useCallback(async () => {
         try {
             setLocating(true);
             console.log('📍 Starting location fetch...');
@@ -198,8 +235,8 @@ export default function LocationPicker() {
             setMapRegion(nextRegion);
             mapRef.current?.animateToRegion(nextRegion, 300);
             setSelected(null);
-        } catch (error) {
-            console.error('❌ Location error:', error);
+        } catch (locateError) {
+            console.error('❌ Location error:', locateError);
             Alert.alert(
                 "Location Error", 
                 "Unable to fetch your current location. Please ensure:\n\n1. Location is enabled in device settings\n2. You have granted location permission\n3. You are not in airplane mode"
@@ -207,9 +244,9 @@ export default function LocationPicker() {
         } finally {
             setLocating(false);
         }
-    };
+    }, [mapRegion]);
 
-    const getCurrentMapCenter = async () => {
+    const getCurrentMapCenter = useCallback(async () => {
         try {
             const camera = await mapRef.current?.getCamera?.();
             const cameraLatitude = asCoordinate(camera?.center?.latitude);
@@ -227,9 +264,9 @@ export default function LocationPicker() {
         }
 
         return mapRegion;
-    };
+    }, [mapRegion]);
 
-    const buildPickedLocation = (location, region = mapRegion) => ({
+    const buildPickedLocation = useCallback((location, region = mapRegion) => ({
         target,
         address: getLocationAddress(location) || `${region.latitude.toFixed(6)}, ${region.longitude.toFixed(6)}`,
         latitude: region.latitude,
@@ -238,9 +275,9 @@ export default function LocationPicker() {
         state: location?.state ?? selected?.state ?? null,
         pincode: location?.pincode ?? selected?.pincode ?? null,
         area: location?.area ?? selected?.area ?? null,
-    });
+    }), [target, mapRegion, selected]);
 
-    const handleUseMapCenter = async () => {
+    const handleUseMapCenter = useCallback(async () => {
         if (!mapRegion) return;
 
         const centerRegion = await getCurrentMapCenter();
@@ -267,9 +304,9 @@ export default function LocationPicker() {
 
         dispatch(pickLocation(buildPickedLocation(resolvedLocation, centerRegion)));
         router.back();
-    };
+    }, [mapRegion, getCurrentMapCenter, dispatch, buildPickedLocation]);
 
-    const handleUseTypedAddress = async () => {
+    const handleUseTypedAddress = useCallback(async () => {
         const cleanAddress = query.trim();
         if (!cleanAddress) return;
 
@@ -286,58 +323,73 @@ export default function LocationPicker() {
         } finally {
             setLocating(false);
         }
-    };
+    }, [query, target, dispatch]);
 
-    const renderLocation = ({ item }) => {
-        const active = selected?.id === item.id;
+    const handleSelectItem = useCallback((item) => {
+        setSelected(item);
+        setQuery(getLocationAddress(item));
+        const itemLatitude = asCoordinate(item.latitude);
+        const itemLongitude = asCoordinate(item.longitude);
+        if (itemLatitude !== null && itemLongitude !== null) {
+            const nextRegion = {
+                ...mapRegion,
+                latitude: itemLatitude,
+                longitude: itemLongitude,
+                latitudeDelta: 0.014,
+                longitudeDelta: 0.014,
+            };
 
-        return (
-            <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => {
-                    setSelected(item);
-                    setQuery(getLocationAddress(item));
-                    const itemLatitude = asCoordinate(item.latitude);
-                    const itemLongitude = asCoordinate(item.longitude);
-                    if (itemLatitude !== null && itemLongitude !== null) {
-                        const nextRegion = {
-                            ...mapRegion,
-                            latitude: itemLatitude,
-                            longitude: itemLongitude,
-                            latitudeDelta: 0.014,
-                            longitudeDelta: 0.014,
-                        };
+            setMapRegion(nextRegion);
+            mapRef.current?.animateToRegion(nextRegion, 300);
+        }
+    }, [mapRegion]);
 
-                        setMapRegion(nextRegion);
-                        mapRef.current?.animateToRegion(nextRegion, 300);
-                    }
-                }}
-                className={`flex-row rounded-xl border px-4 py-3 mb-3 ${active ? "border-[#4A43EC] bg-[#F4F7FF]" : "border-gray-200 bg-white"}`}
-            >
-                <View className={`w-9 h-9 rounded-xl items-center justify-center mr-3 ${active ? "bg-[#d2d0fa]" : "bg-gray-100"}`}>
-                    <Ionicons name="location" size={17} color={active ? "#4A43EC" : "#777"} />
-                </View>
-                <View className="flex-1">
-                    <Text className="text-sm font-lato-bold text-black" numberOfLines={1}>
-                        {getShortAddress(item.address)}
-                    </Text>
-                    <Text className="text-xs font-lato-medium text-gray-500 mt-1" numberOfLines={2}>
-                        {item.address}
-                    </Text>
-                </View>
-                {active && (
-                    <Ionicons name="checkmark-circle" size={20} color="#4A43EC" />
-                )}
-            </TouchableOpacity>
-        );
-    };
+    const handleRegionChangeComplete = useCallback((region) => {
+        setMapRegion(region);
+    }, []);
+
+    const handlePanDrag = useCallback(() => {
+        setSelected(null);
+    }, []);
+
+    const renderLocation = useCallback(({ item }) => (
+        <LocationItem
+            item={item}
+            isSelected={selected?.id === item.id}
+            onSelect={handleSelectItem}
+        />
+    ), [selected?.id, handleSelectItem]);
+
+    const keyExtractor = useCallback((item, index) => item.id ? String(item.id) : String(index), []);
+
+    const listEmptyComponent = useMemo(() => (
+        <View className="items-center justify-center py-16">
+            <View className="w-14 h-14 rounded-2xl bg-white border border-gray-200 items-center justify-center mb-3">
+                <Ionicons name="location-outline" size={24} color="#4A43EC" />
+            </View>
+            <Text className="text-sm font-lato-bold text-black">
+                {error ? "Location unavailable" : "No location selected"}
+            </Text>
+            <Text className="text-xs font-lato-medium text-gray-500 mt-1 text-center px-8">
+                {error || "Search for an address or use the typed address."}
+            </Text>
+        </View>
+    ), [error]);
+
+    const contentContainerStyle = useMemo(() => ({
+        paddingBottom: insets.bottom + 28,
+    }), [insets.bottom]);
+
+    const confirmContainerStyle = useMemo(() => ({
+        paddingBottom: insets.bottom + 16,
+    }), [insets.bottom]);
 
     return (
         <View className="flex-1 bg-[#F8F9FE]" style={{ paddingTop: insets.top }}>
             <StatusBar barStyle="dark-content" backgroundColor="#F8F9FE" />
 
             <View className="flex-row items-center justify-between px-5 py-4">
-                <Pressable onPress={() => router.back()} className="p-1">
+                <Pressable onPress={handleBack} className="p-1">
                     <Ionicons name="arrow-back" size={21} color="#111" />
                 </Pressable>
                 <Text className="text-base font-lato-bold text-black">{title}</Text>
@@ -359,15 +411,13 @@ export default function LocationPicker() {
                         loadingIndicatorColor="#4A43EC"
                         loadingBackgroundColor="#F8F9FE"
                         moveOnMarkerPress={false}
-                        onRegionChangeComplete={(region) => {
-                            setMapRegion(region);
-                        }}
-                        onPanDrag={() => setSelected(null)}
+                        onRegionChangeComplete={handleRegionChangeComplete}
+                        onPanDrag={handlePanDrag}
                         onMapReady={() => {
                             console.log('✅ Map is ready');
                         }}
-                        onError={(error) => {
-                            console.error('❌ Map error:', error);
+                        onError={(mapErr) => {
+                            console.error('❌ Map error:', mapErr);
                         }}
                     />
                     <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
@@ -442,27 +492,19 @@ export default function LocationPicker() {
             <FlatList
                 className="flex-1 px-5"
                 data={results}
-                keyExtractor={(item) => item.id}
+                keyExtractor={keyExtractor}
                 renderItem={renderLocation}
                 keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ paddingBottom: insets.bottom + 28 }}
-                ListEmptyComponent={
-                    <View className="items-center justify-center py-16">
-                        <View className="w-14 h-14 rounded-2xl bg-white border border-gray-200 items-center justify-center mb-3">
-                            <Ionicons name="location-outline" size={24} color="#4A43EC" />
-                        </View>
-                        <Text className="text-sm font-lato-bold text-black">
-                            {error ? "Location unavailable" : "No location selected"}
-                        </Text>
-                        <Text className="text-xs font-lato-medium text-gray-500 mt-1 text-center px-8">
-                            {error || "Search for an address or use the typed address."}
-                        </Text>
-                    </View>
-                }
+                contentContainerStyle={contentContainerStyle}
+                ListEmptyComponent={listEmptyComponent}
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                initialNumToRender={8}
+                removeClippedSubviews={Platform.OS === 'android'}
             />
 
             {selected && (
-                <View className="px-5 py-4 bg-white border-t border-gray-100" style={{ paddingBottom: insets.bottom + 16 }}>
+                <View className="px-5 py-4 bg-white border-t border-gray-100" style={confirmContainerStyle}>
                     <TouchableOpacity
                         onPress={handleUseMapCenter}
                         activeOpacity={0.85}

@@ -35,7 +35,15 @@ export default function PropertyType() {
     // Real state selectors
     const properties = useSelector(state => state.property.shortlistedProperties || []);
     const loading = useSelector(state => state.property.shortlistedLoading || false);
-    const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched && !n.is_read).length || 0);
+    const unwatchedCount = useSelector(state => {
+        const list = state.notifications?.list;
+        if (!list) return 0;
+        let count = 0;
+        for (let i = 0; i < list.length; i++) {
+            if (!list[i].watched && !list[i].is_read) count++;
+        }
+        return count;
+    });
     const router = useRouter();
 
     // Local frontend filter states wrapped inside an unified layout boundaries track object
@@ -60,25 +68,41 @@ export default function PropertyType() {
         }
     }, [typeId]);
 
-    const handleOpenFilter = () => {
+    const handleOpenFilter = useCallback(() => {
         bottomSheetRef.current?.expand();
-    };
+    }, []);
 
-    const handleCloseFilter = () => bottomSheetRef.current?.close();
+    const handleCloseFilter = useCallback(() => {
+        bottomSheetRef.current?.close();
+    }, []);
 
-    const handleApplyFilters = () => {
+    const handleApplyFilters = useCallback(() => {
         setPriceRange(tempPriceRange);
-        handleCloseFilter();
-    };
+        bottomSheetRef.current?.close();
+    }, [tempPriceRange]);
 
-    const handleResetFilters = () => {
+    const handleResetFilters = useCallback(() => {
         setTempPriceRange({ min: 0, max: PRICE_RANGE_MAX });
-    };
+    }, []);
 
-    const handleTypePress = (id) => {
+    const handleTypePress = useCallback((id) => {
         setSelectedTypeId(id);
         setView("list");
-    };
+    }, []);
+
+    const handleNotifications = useCallback(() => {
+        router.push("/(screens)/notifications");
+    }, [router]);
+
+    const handleBack = useCallback(() => {
+        if (typeId) {
+            router.back();
+        } else {
+            setView("types");
+            setSearchQuery("");
+            setPriceRange({ min: 0, max: PRICE_RANGE_MAX });
+        }
+    }, [typeId, router]);
 
     const handlePropertyPress = useCallback((item) => {
         if (!item?.id) return;
@@ -161,12 +185,12 @@ export default function PropertyType() {
         []
     );
 
-    const formatSliderLabel = (val) => {
+    const formatSliderLabel = useCallback((val) => {
         if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`;
         if (val >= 100000) return `₹${(val / 100000).toFixed(0)}L`;
         if (val >= 1000) return `₹${(val / 1000).toFixed(0)}K`;
         return `₹${val}`;
-    };
+    }, []);
 
     if (view === "list") {
         return (
@@ -175,21 +199,13 @@ export default function PropertyType() {
                 <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
                 <View className="flex-row items-center justify-between px-5 pb-3 mt-2" style={{ paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 8 : 45 }}>
-                    <Pressable onPress={() => {
-                        if (typeId) {
-                            router.back();
-                        } else {
-                            setView("types");
-                            setSearchQuery("");
-                            setPriceRange({ min: 0, max: PRICE_RANGE_MAX });
-                        }
-                    }} className="p-1">
+                    <Pressable onPress={handleBack} className="p-1">
                         <Ionicons name="arrow-back" size={22} color="black" />
                     </Pressable>
                     <Text className="text-[16px] text-black font-lato-bold">{currentTypeLabel}</Text>
                     <Pressable
                         className="p-1 relative"
-                        onPress={() => router.push("/(screens)/notifications")}
+                        onPress={handleNotifications}
                     >
                         <Ionicons name="notifications" size={22} color="black" />
                         {unwatchedCount > 0 ? (
@@ -339,7 +355,7 @@ export default function PropertyType() {
                 <Text className="text-[16px] text-black font-lato-bold">Property type</Text>
                 <Pressable
                     className="p-1 relative"
-                    onPress={() => router.push("/notifications")}
+                    onPress={handleNotifications}
                 >
                     <Ionicons name="notifications" size={22} color="black" />
                     {unwatchedCount > 0 ? (

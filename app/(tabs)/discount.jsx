@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, memo } from "react";
 import { ActivityIndicator, FlatList, StatusBar, Text, TextInput, TouchableOpacity, View, RefreshControl } from "react-native";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from "expo-router";
@@ -19,7 +19,7 @@ const formatDate = (dateStr) => {
 const formatAmount = (amount) =>
     `\u20B9${Number(amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 
-function CommissionCard({ item }) {
+const CommissionCard = memo(function CommissionCard({ item }) {
     const status = item.status || "CREDIT";
     const title = item.propertyName || "Commission Earned";
     const location = item.propertyAddress || "Property commission";
@@ -63,28 +63,30 @@ function CommissionCard({ item }) {
             </View>
         </View>
     );
-}
+});
 
 export default function Discount() {
     const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
     const router = useRouter();
     const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched && !n.is_read).length || 0);
-    const { commissions, loading, error } = useSelector((state) => state.wallet);
+    const commissions = useSelector((state) => state.wallet?.commissions);
+    const loading = useSelector((state) => state.wallet?.loading);
+    const error = useSelector((state) => state.wallet?.error);
     const [search, setSearch] = useState("");
     const [filterModalVisible, setFilterModalVisible] = useState(false);
     const [statusFilter, setStatusFilter] = useState('all');
     const [dateFilter, setDateFilter] = useState('all');
     const [refreshing, setRefreshing] = useState(false);
 
-    const onRefresh = async () => {
+    const onRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
             await dispatch(fetchCommissionHistory({ page: 1, limit: 100 }));
         } finally {
             setRefreshing(false);
         }
-    };
+    }, [dispatch]);
 
     useEffect(() => {
         console.log('🔍 [discount.jsx] Fetching commission history...');
@@ -143,16 +145,20 @@ export default function Discount() {
         return result;
     }, [commissions, search, statusFilter, dateFilter]);
 
-    const handleApplyFilters = (filters) => {
+    const handleApplyFilters = useCallback((filters) => {
         console.log('📊 [discount.jsx] Filters applied:', filters);
         setStatusFilter(filters.status);
         setDateFilter(filters.dateFilter);
         setFilterModalVisible(false);
-    };
+    }, []);
 
-    const retry = () => {
+    const retry = useCallback(() => {
         dispatch(fetchCommissionHistory({ page: 1, limit: 100 }));
-    };
+    }, [dispatch]);
+
+    const keyExtractor = useCallback((item) => item.id.toString(), []);
+
+    const renderItem = useCallback(({ item }) => <CommissionCard item={item} />, []);
 
     return (
         <View className="flex-1 bg-white">
@@ -227,11 +233,14 @@ export default function Discount() {
             ) : (
                 <FlatList
                     data={filtered}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => <CommissionCard item={item} />}
+                    keyExtractor={keyExtractor}
+                    renderItem={renderItem}
                     contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140, paddingTop: 10, flexGrow: 1 }}
                     showsVerticalScrollIndicator={false}
                     alwaysBounceVertical={true}
+                    initialNumToRender={8}
+                    maxToRenderPerBatch={10}
+                    windowSize={5}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}

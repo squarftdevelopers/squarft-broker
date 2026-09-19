@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   Pressable,
   StatusBar,
   Platform,
+  Modal,
+  RefreshControl,
 } from "react-native";
 import { router, Stack } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -14,13 +16,25 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchRequirements, deleteRequirementApi } from "../../store/slices/requirementsSlice";
 import { LinearGradient } from "expo-linear-gradient";
-import { Modal, RefreshControl } from "react-native";
 import SkeletonLoader from "../../components/SkeletonLoader";
+
+const formatCurrency = (val) => {
+  if (!val) return "N/A";
+  if (val >= 10000000) {
+     return `₹ ${Math.floor(val/10000000)} Cr+`;
+  }
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(val).replace('₹', '₹ ');
+};
 
 export default function CustomerRequirement() {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
-  const { list: requirements, loading, pagination } = useSelector((state) => state.requirements);
+  const requirements = useSelector((state) => state.requirements?.list || []);
+  const loading = useSelector((state) => state.requirements?.loading);
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
@@ -30,22 +44,22 @@ export default function CustomerRequirement() {
     dispatch(fetchRequirements({ search: searchQuery }));
   }, [dispatch, searchQuery]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     await dispatch(fetchRequirements({ search: searchQuery }));
     setIsRefreshing(false);
-  };
+  }, [dispatch, searchQuery]);
 
   // The filtering is now handled by the API via searchQuery in useEffect,
   // but we can still keep local filtering for smoother UI if needed.
   const filteredRequirements = requirements;
 
-  const handleDeletePress = (id) => {
+  const handleDeletePress = useCallback((id) => {
     setSelectedId(id);
     setDeleteModalVisible(true);
-  };
+  }, []);
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (selectedId) {
       try {
         await dispatch(deleteRequirementApi(selectedId)).unwrap();
@@ -55,19 +69,7 @@ export default function CustomerRequirement() {
         alert(err || "Failed to delete");
       }
     }
-  };
-
-  const formatCurrency = (val) => {
-    if (!val) return "N/A";
-    if (val >= 10000000) {
-       return `₹ ${Math.floor(val/10000000)} Cr+`;
-    }
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(val).replace('₹', '₹ ');
-  };
+  }, [selectedId, dispatch]);
 
   return (
     <View className="flex-1 bg-white">
