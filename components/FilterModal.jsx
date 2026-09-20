@@ -59,6 +59,7 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
     const [selectedMainType, setSelectedMainType] = useState(null);
     const [selectedSubTypes, setSelectedSubTypes] = useState([]); // Array for multiple selection
     const [selectedBhks, setSelectedBhks] = useState([]); // Array for multiple selection
+    const [selectedStatus, setSelectedStatus] = useState(null); // 'approved' | 'rejected' | 'pending_review' | null
     const [liveBudget, setLiveBudget] = useState([2000000, 50000000]); // 20L to 5Cr
     
     const BUDGET_MIN = 2000000; // 20L
@@ -113,6 +114,7 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
             propertyTypes: selectedSubTypes,
             bhks: showBhk ? selectedBhks : [],
             budgetRange: liveBudget,
+            status: selectedStatus,
             isDefaultBudget: liveBudget[0] === 2000000 && liveBudget[1] === 50000000,
         });
         onApplyFilters({
@@ -120,6 +122,7 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
             propertyTypes: selectedSubTypes, 
             bhks: showBhk ? selectedBhks : [], 
             budgetRange: liveBudget,
+            status: selectedStatus,
         });
         onClose();
     };
@@ -128,6 +131,7 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
         setSelectedMainType(null);
         setSelectedSubTypes([]);
         setSelectedBhks([]);
+        setSelectedStatus(null);
         setLiveBudget([BUDGET_MIN, BUDGET_MAX]);
     };
 
@@ -275,6 +279,45 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
                             </View>
                         </View>
                     )}
+
+                    {/* Property Status Filter */}
+                    <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 12 }}>
+                            Property Status
+                        </Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                            {[
+                                { id: null, label: 'All' },
+                                { id: 'approved', label: 'Approved' },
+                                { id: 'pending_review', label: 'Pending Review' },
+                                { id: 'rejected', label: 'Rejected' },
+                            ].map((status) => {
+                                const isSelected = selectedStatus === status.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={status.label}
+                                        onPress={() => setSelectedStatus(status.id)}
+                                        style={{
+                                            paddingHorizontal: 16,
+                                            paddingVertical: 10,
+                                            borderWidth: 2,
+                                            borderColor: isSelected ? '#7C3AED' : '#E5E7EB',
+                                            borderRadius: 8,
+                                            backgroundColor: isSelected ? '#F5F3FF' : '#FFFFFF',
+                                        }}
+                                    >
+                                        <Text style={{
+                                            fontSize: 13,
+                                            fontWeight: '600',
+                                            color: isSelected ? '#7C3AED' : '#6B7280',
+                                        }}>
+                                            {status.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
 
                     {/* Budget Range Slider */}
                     <View style={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20 }}>

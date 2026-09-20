@@ -187,7 +187,7 @@ export default function AddProperty() {
       }
       await brokerPropertyApi.updatePricingDetails(id, { selling_price: pricing.price, is_negotiable: pricing.negotiable, tax_included: !pricing.excludeTax, payment_mode: pricing.paymentMode, submit: true });
       resetForm();
-      Alert.alert("Success", "Property submitted successfully!");
+      Alert.alert("Submitted for Review", "Your property has been submitted for admin review. It will be published once approved!");
       navigation.navigate("favourite");
     } catch (e) { Alert.alert("Could not submit", e.response?.data?.message || e.message || "Please try again."); } finally { setBusy(false); }
   };

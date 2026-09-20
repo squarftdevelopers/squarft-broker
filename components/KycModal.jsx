@@ -12,6 +12,7 @@ const KycModal = () => {
     const { isKycCompleted, kycChecked, kycLoading, token, kyc } = useSelector((state) => state.auth);
     const kycStatus = String(kyc?.verification_status || '').toLowerCase();
     const isSubmitted = ['pending', 'submitted', 'under_review', 'in_review'].includes(kycStatus);
+    const isRejected = kycStatus === 'rejected';
 
     const snapPoints = useMemo(() => ['92%'], []);
     const shouldHideForRoute = pathname.includes('kyc');
@@ -98,11 +99,15 @@ const KycModal = () => {
 
                 {/* Text Content */}
                 <View style={styles.textContainer}>
-                    <Text style={styles.title}>
-                        {isSubmitted ? 'KYC Submitted' : 'Please Complete Your KYC'}
+                    <Text style={[styles.title, isRejected && styles.rejectedTitle]}>
+                        {isRejected ? 'KYC Rejected' : isSubmitted ? 'KYC Submitted' : 'Please Complete Your KYC'}
                     </Text>
                     <Text style={styles.description}>
-                        {isSubmitted
+                        {isRejected
+                            ? (kyc?.rejection_reason
+                                ? `Reason: ${kyc.rejection_reason}`
+                                : 'Your documents did not meet the requirements. Please re-upload valid documents.')
+                            : isSubmitted
                             ? 'Your KYC is submitted for admin review. Access will unlock after approval.'
                             : 'Complete your KYC to start uploading your property and reach potential buyers.'}
                     </Text>
@@ -120,7 +125,7 @@ const KycModal = () => {
                             <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
                             <Text style={styles.completeButtonText}>
-                                {isSubmitted ? 'Refresh Status' : 'Complete KYC'}
+                                {isSubmitted ? 'Refresh Status' : isRejected ? 'Re-upload Documents' : 'Complete KYC'}
                             </Text>
                         )}
                     </Pressable>
@@ -194,6 +199,9 @@ const styles = StyleSheet.create({
         fontFamily: 'Lato-Bold',
         letterSpacing: -0.3,
     },
+    rejectedTitle: {
+        color: '#DC2626',
+    },
     description: {
         fontSize: 14.5,
         color: '#9CA3AF',
@@ -228,6 +236,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         fontFamily: 'Lato-Bold',
+    },
+    rejectedButton: {
+        backgroundColor: '#DC2626',
+        shadowColor: '#DC2626',
     },
     disabledButton: {
         opacity: 0.85,

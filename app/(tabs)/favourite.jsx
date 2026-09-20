@@ -25,6 +25,7 @@ const hasSelectedFilters = (filters) => {
         filters.category ||
         filters.propertyTypes?.length ||
         filters.bhks?.length ||
+        filters.status ||
         (filters.budgetRange && !isDefaultBudgetRange(filters.budgetRange))
     );
 };
@@ -47,13 +48,57 @@ const buildMyAddedFilters = ({ search, filters }) => {
         backendFilters.min_price = filters.budgetRange[0];
         backendFilters.max_price = filters.budgetRange[1];
     }
+    if (filters.status) {
+        backendFilters.status = filters.status;
+    }
 
     return backendFilters;
+};
+
+const getStatusBadge = (status) => {
+    const s = String(status || '').toLowerCase().trim();
+    if (s === 'approved' || s === 'published' || s === 'live' || s === 'active') {
+        return {
+            label: 'Approved',
+            bg: '#ECFDF5',
+            text: '#059669',
+            border: '#A7F3D0',
+            dot: '#10B981',
+        };
+    }
+    if (s === 'rejected') {
+        return {
+            label: 'Rejected',
+            bg: '#FEF2F2',
+            text: '#DC2626',
+            border: '#FECACA',
+            dot: '#EF4444',
+        };
+    }
+    if (s === 'pending_review' || s === 'pending' || s === 'under_review' || s === 'in_review') {
+        return {
+            label: 'Pending Review',
+            bg: '#FFFBEB',
+            text: '#B45309',
+            border: '#FDE68A',
+            dot: '#F59E0B',
+        };
+    }
+    return {
+        label: s ? s.replace(/_/g, ' ') : 'Draft',
+        bg: '#F3F4F6',
+        text: '#6B7280',
+        border: '#E5E7EB',
+        dot: '#9CA3AF',
+    };
 };
 
 const PropertyCard = memo(function PropertyCard({ item, onDeletePress, onEditPress, onPress }) {
     const [menuOpen, setMenuOpen] = useState(false);
     
+    // Status badge configuration
+    const statusBadge = getStatusBadge(item.status || item.approval_status);
+
     // Get cover image from media array
     const coverImage = item.media?.find(m => m.is_cover && m.media_type === 'image')?.url || 
                        item.media?.find(m => m.media_type === 'image')?.url ||
@@ -115,13 +160,27 @@ const PropertyCard = memo(function PropertyCard({ item, onDeletePress, onEditPre
         >
             <DynamicPropertyImage uri={coverImage} style={{ width: 108, height: 105, borderRadius: 16 }} label="No property image" />
             <View className="flex-1 ml-2.5">
-                <View className="flex-row items-center mb-0.5">
-                    <View className="w-[7px] h-[7px] rounded-full bg-[#4A43EC] mr-1" />
-                    <Text className="text-[10px] text-[#4A43EC] italic capitalize">{category}</Text>
+                <View className="flex-row items-center justify-between mb-1 pr-1">
+                    <View className="flex-row items-center flex-1 mr-1">
+                        <View className="w-[6px] h-[6px] rounded-full bg-[#4A43EC] mr-1" />
+                        <Text className="text-[10px] text-[#4A43EC] italic capitalize" numberOfLines={1}>{category}</Text>
+                    </View>
+                    <View 
+                        style={{ backgroundColor: statusBadge.bg, borderColor: statusBadge.border, borderWidth: 1 }}
+                        className="flex-row items-center px-2 py-0.5 rounded-full"
+                    >
+                        <View style={{ backgroundColor: statusBadge.dot }} className="w-[5px] h-[5px] rounded-full mr-1" />
+                        <Text style={{ color: statusBadge.text }} className="text-[9px] font-roboto-medium">{statusBadge.label}</Text>
+                    </View>
                 </View>
                 <Text className="text-[14px] font-roboto-medium text-[#1a1a1a] mb-0.5" numberOfLines={1}>
                     {propertyName}
                 </Text>
+                {String(item.status || '').toLowerCase() === 'rejected' && Boolean(item.rejection_reason) && (
+                    <Text className="text-[10px] text-[#DC2626] italic mb-0.5" numberOfLines={1}>
+                        Reason: {item.rejection_reason}
+                    </Text>
+                )}
                 <View className="flex-row items-center mb-0.5">
                     <Ionicons name="location" size={13} color="#FE8A71" />
                     <Text className="text-[10px] tracking-wide font-roboto text-gray-500 ml-1" numberOfLines={1}>{location}</Text>
