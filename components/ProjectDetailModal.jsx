@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Image, TouchableOpacity, Dimensions, ActivityIndicator, Alert } from "react-native";
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView, BottomSheetTextInput } from "@gorhom/bottom-sheet";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { dealService } from "../services/dealService";
 import ImageLightbox from "./ImageLightbox";
@@ -629,6 +630,8 @@ export default function ProjectDetailModal({ visible, onClose, project, variant,
         },
     };
 
+    const insets = useSafeAreaInsets();
+
     return (
         <BottomSheetModal
             ref={sheetRef}
@@ -644,6 +647,7 @@ export default function ProjectDetailModal({ visible, onClose, project, variant,
             android_keyboardInputMode="adjustResize"
             backgroundStyle={{ borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: "#fff" }}
             handleIndicatorStyle={{ backgroundColor: "#CBD5E1" }}
+            bottomInset={insets.bottom}
         >
             <BottomSheetScrollView
                 showsVerticalScrollIndicator={false}
@@ -950,7 +954,7 @@ export default function ProjectDetailModal({ visible, onClose, project, variant,
                     </View>
                 )}
 
-                <View className="px-5 pt-3 border-t border-gray-100 mt-1" style={{ paddingBottom: 8 }}>
+                <View className="px-5 pt-3 border-t border-gray-100 mt-1" style={{ paddingBottom: Math.max(insets.bottom, 8) }}>
                     {sheetView === "property" ? (
                         <TouchableOpacity
                             onPress={onClose}

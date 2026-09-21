@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { BottomSheetModal, BottomSheetScrollView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CommissionFilterModal = ({ visible, onClose, onApplyFilters, initialStatus = 'all', initialDateFilter = 'all' }) => {
+    const insets = useSafeAreaInsets();
     const bottomSheetModalRef = useRef(null);
     const snapPoints = useMemo(() => ['90%'], []);
     
@@ -62,6 +64,7 @@ const CommissionFilterModal = ({ visible, onClose, onApplyFilters, initialStatus
             onDismiss={onClose}
             enablePanDownToClose={true}
             handleIndicatorStyle={{ backgroundColor: '#D1D5DB', width: 40 }}
+            bottomInset={insets.bottom}
         >
             <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
                 {/* Header */}
@@ -154,7 +157,8 @@ const CommissionFilterModal = ({ visible, onClose, onApplyFilters, initialStatus
                     borderTopWidth: 1,
                     borderTopColor: '#E5E7EB',
                     paddingHorizontal: 20,
-                    paddingVertical: 16,
+                    paddingTop: 16,
+                    paddingBottom: Math.max(insets.bottom, 16),
                     flexDirection: 'row',
                     gap: 12,
                 }}>
