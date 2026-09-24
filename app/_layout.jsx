@@ -1,12 +1,12 @@
-import { Stack } from "expo-router";
+import { Stack, usePathname, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import { Platform, useColorScheme } from "react-native";
+import { Alert, BackHandler, Platform, useColorScheme } from "react-native";
 import * as NavigationBar from "expo-navigation-bar";
 import { Provider, useDispatch } from 'react-redux';
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import "../global.css";
 import { store } from '../store/store';
 import { loadToken } from '../store/slices/authSlice';
@@ -43,6 +43,37 @@ function AppInit({ children }) {
         dispatch(loadToken());
     }, [dispatch]);
     return children;
+}
+
+function AndroidExitGuard() {
+    const router = useRouter();
+    const pathname = usePathname();
+
+    useEffect(() => {
+        if (Platform.OS !== "android") return undefined;
+
+        const onBackPress = () => {
+            if (router.canGoBack()) {
+                return false;
+            }
+
+            Alert.alert("Exit app", "Are you sure you want to exit the app?", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Exit", style: "destructive", onPress: () => BackHandler.exitApp() },
+            ]);
+            return true;
+        };
+
+        const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+        return () => subscription.remove();
+    }, [pathname, router]);
+
+    return null;
+}
+
+function BrokerKycModal() {
+    const insets = useSafeAreaInsets();
+    return <KycModal insets={insets} />;
 }
 
 export default function AuthLayout() {
@@ -90,6 +121,8 @@ export default function AuthLayout() {
                     <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
                     <BottomSheetModalProvider>
                         <AppInit>
+                            <AndroidExitGuard />
+                            <BrokerKycModal />
                             <PushNotificationRegistrar />
                             <Stack>
                                 <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -97,7 +130,6 @@ export default function AuthLayout() {
                                 <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
                                 <Stack.Screen name="(screens)" options={{ headerShown: false }} />
                             </Stack>
-                            <KycModal />
                             {showAnimatedSplash && (
                                 <AnimatedSplashScreen onFinish={() => setShowAnimatedSplash(false)} />
                             )}

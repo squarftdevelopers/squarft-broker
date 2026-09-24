@@ -59,18 +59,37 @@ const matchesSearch = (item, search) => {
     ].some(value => normalizeText(value).includes(search));
 };
 
+const matchesStatusFilter = (item, status) => {
+    const statusValue = normalizeText(status);
+    if (!statusValue) return true;
+
+    const aliases = {
+        approved: ["approved", "published", "live", "active"],
+        pending_review: ["pending_review", "pending", "under_review", "in_review"],
+        rejected: ["rejected"],
+        draft: ["draft"],
+        published: ["published", "live", "active"],
+        archived: ["archived"],
+    };
+
+    const values = aliases[statusValue] || [statusValue];
+    return values.some(value => normalizeText(item.status || item.approval_status || item.listing_status) === value);
+};
+
 const applyMyAddedFilters = (items, filters = {}) => {
     const category = normalizeText(filters.category);
     const propertyTypes = parseListFilter(filters.property_type);
     const bhkTypes = parseListFilter(filters.bhk_type);
     const minPrice = parseNumberFilter(filters.min_price);
     const maxPrice = parseNumberFilter(filters.max_price);
+    const status = normalizeText(filters.status);
     const search = normalizeText(filters.search);
 
     return items.filter((item) => {
         if (category && getPropertyCategory(item) !== category) return false;
         if (propertyTypes.length > 0 && !propertyTypes.includes(getPropertySubtype(item))) return false;
         if (bhkTypes.length > 0 && !bhkTypes.includes(getBedroomFilterValue(item))) return false;
+        if (status && !matchesStatusFilter(item, status)) return false;
         if (!matchesSearch(item, search)) return false;
 
         if (minPrice !== null || maxPrice !== null) {

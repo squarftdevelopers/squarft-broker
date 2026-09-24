@@ -278,13 +278,9 @@ export default function Favourite() {
     // AND reset filters to show all properties
     useFocusEffect(
         useCallback(() => {
-            console.log('≡ƒöä [favourite.jsx] Tab focused - Resetting filters and refreshing');
-            // Clear filters
-            setActiveFilters(null);
-            setSearch("");
-            // Fetch all properties without filters
-            dispatch(fetchMyAddedProperties());
-        }, [dispatch])
+            console.log('≡ƒöä [favourite.jsx] Tab focused - refreshing current filters');
+            dispatch(fetchMyAddedProperties(buildMyAddedFilters({ search, filters: activeFilters })));
+        }, [dispatch, search, activeFilters])
     );
 
     // Debounced search - fetch from backend when search changes
@@ -510,6 +506,7 @@ export default function Favourite() {
                 visible={filterModalVisible}
                 onClose={() => setFilterModalVisible(false)}
                 onApplyFilters={handleApplyFilters}
+                initialFilters={activeFilters}
             />
         </View>
     );

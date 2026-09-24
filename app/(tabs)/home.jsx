@@ -345,22 +345,22 @@ export default function Home() {
           <View className="flex-row gap-3 mb-6">
             <Pressable
               onPress={() => handleFilterPress("SELL")}
-              style={{ flexShrink: 0 }}
-              className="h-11 bg-white rounded-full flex-row justify-center items-center border border-[#E5E7EB] shadow-xs px-6"
+              style={{ flexShrink: 0, minWidth: 132 }}
+              className="h-12 bg-[#4A43EC] rounded-full flex-row justify-center items-center px-5 shadow-sm"
             >
-              <MaterialCommunityIcons 
-                name="filter-variant" 
-                size={18} 
-                color="#374151" 
+              <MaterialCommunityIcons
+                name="sale"
+                size={18}
+                color="#FFFFFF"
               />
-              <Text className="text-[13px] text-gray-700 font-lato-bold ml-1.5" numberOfLines={1}>
+              <Text className="text-[13px] text-white font-lato-bold ml-2" numberOfLines={1}>
                 Resale
               </Text>
             </Pressable>
             <Pressable
               onPress={() => handleFilterPress(buyFilter)}
               style={{ flex: 1 }}
-              className="h-11 bg-white rounded-full flex-row justify-center items-center border border-[#E5E7EB] shadow-xs px-3"
+              className="h-12 bg-white rounded-full flex-row justify-center items-center border border-[#E5E7EB] shadow-xs px-3"
             >
               <Ionicons name="add" size={18} color="#374151" />
               <Text className="text-[12px] text-gray-700 font-lato-bold ml-1" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>

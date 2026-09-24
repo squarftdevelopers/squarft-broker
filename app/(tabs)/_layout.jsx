@@ -6,7 +6,6 @@ import Settings from "lucide-react-native/icons/settings";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch } from "react-redux";
-import KycModal from "../../components/KycModal";
 import { clearCurrentItem } from "../../store/slices/myAddedSlice";
 
 const TAB_COLOR = "#4A43EC";
@@ -169,7 +168,6 @@ export default function TabsLayout() {
                     }}
                 />
             </Tabs>
-            <KycModal />
         </>
     );
 }

@@ -50,36 +50,45 @@ const bhkOptions = [
 
 const bhkSubTypes = ["plot", "villa", "apartment", "rowhouse"];
 
-const FilterModal = ({ visible, onClose, onApplyFilters }) => {
+const FilterModal = ({ visible, onClose, onApplyFilters, initialFilters = null }) => {
     const insets = useSafeAreaInsets();
     const bottomSheetModalRef = useRef(null);
     const snapPoints = useMemo(() => ['90%'], []);
     
     // Filter states
-    const [selectedMainType, setSelectedMainType] = useState(null);
-    const [selectedSubTypes, setSelectedSubTypes] = useState([]); // Array for multiple selection
-    const [selectedBhks, setSelectedBhks] = useState([]); // Array for multiple selection
-    const [selectedStatus, setSelectedStatus] = useState(null); // 'approved' | 'rejected' | 'pending_review' | null
-    const [liveBudget, setLiveBudget] = useState([2000000, 50000000]); // 20L to 5Cr
+    const [selectedMainType, setSelectedMainType] = useState(initialFilters?.category || null);
+    const [selectedSubTypes, setSelectedSubTypes] = useState(initialFilters?.propertyTypes || []);
+    const [selectedBhks, setSelectedBhks] = useState(initialFilters?.bhks || []);
+    const [selectedStatus, setSelectedStatus] = useState(initialFilters?.status || null);
+    const [liveBudget, setLiveBudget] = useState(initialFilters?.budgetRange || [2000000, 50000000]);
     
     const BUDGET_MIN = 2000000; // 20L
     const BUDGET_MAX = 50000000; // 5Cr
 
     useEffect(() => {
         if (visible) {
+            setSelectedMainType(initialFilters?.category || null);
+            setSelectedSubTypes(initialFilters?.propertyTypes || []);
+            setSelectedBhks(initialFilters?.bhks || []);
+            setSelectedStatus(initialFilters?.status || null);
+            setLiveBudget(initialFilters?.budgetRange || [2000000, 50000000]);
             bottomSheetModalRef.current?.present();
         } else {
             bottomSheetModalRef.current?.dismiss();
         }
-    }, [visible]);
+    }, [visible, initialFilters]);
 
     useEffect(() => {
-        setSelectedSubTypes([]);
-    }, [selectedMainType]);
+        if (selectedMainType !== initialFilters?.category) {
+            setSelectedSubTypes([]);
+        }
+    }, [selectedMainType, initialFilters]);
 
     useEffect(() => {
-        setSelectedBhks([]);
-    }, [selectedSubTypes]);
+        if (selectedMainType === 'residential' && selectedSubTypes.length > 0) {
+            setSelectedBhks(prev => prev.filter(item => bhkOptions.some(option => option.id === item)));
+        }
+    }, [selectedSubTypes, selectedMainType]);
 
     const renderBackdrop = useCallback(
         (props) => (
@@ -199,7 +208,7 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
                                     <Text style={{
                                         fontSize: 14,
                                         fontWeight: '600',
-                                        color: '#selectedMainType' === type.id ? '#7C3AED' : '#6B7280',
+                                        color: selectedMainType === type.id ? '#7C3AED' : '#6B7280',
                                     }}>
                                         {type.label}
                                     </Text>

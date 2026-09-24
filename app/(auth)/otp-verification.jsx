@@ -103,6 +103,7 @@ export default function OtpVerification() {
                                     keyboardType="number-pad"
                                     textContentType={index === 0 ? "oneTimeCode" : "none"}
                                     autoComplete={index === 0 ? "sms-otp" : "off"}
+                                    importantForAutofill={index === 0 ? "yes" : "no"}
                                     maxLength={index === 0 ? 6 : 1}
                                     style={{
                                         width: 48,

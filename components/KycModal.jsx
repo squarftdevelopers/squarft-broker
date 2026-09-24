@@ -3,11 +3,9 @@ import { View, Text, Pressable, StyleSheet, Image, Platform, ActivityIndicator }
 import { useSelector, useDispatch } from 'react-redux';
 import { router, usePathname } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchKyc } from '../store/slices/authSlice';
 
-const KycModal = () => {
-    const insets = useSafeAreaInsets();
+const KycModal = ({ insets = { bottom: 0 } }) => {
     const dispatch = useDispatch();
     const pathname = usePathname();
     const bottomSheetModalRef = useRef(null);
@@ -53,6 +51,7 @@ const KycModal = () => {
 
     const [refreshing, setRefreshing] = useState(false);
     const isRefreshing = isSubmitted && (refreshing || kycLoading);
+    const bottomBarPaddingBottom = Math.max(insets.bottom, Platform.OS === 'ios' ? 38 : 28);
 
     const handleKycAction = async () => {
         if (isSubmitted) {
@@ -117,7 +116,7 @@ const KycModal = () => {
                 </View>
 
                 {/* Bottom Button Container with top border */}
-                <View style={styles.bottomBar}>
+                <View style={[styles.bottomBar, { paddingBottom: bottomBarPaddingBottom }]}>
                     <Pressable
                         style={[styles.completeButton, isRefreshing && styles.disabledButton]}
                         onPress={handleKycAction}
@@ -219,7 +218,6 @@ const styles = StyleSheet.create({
         borderTopColor: '#F3F4F6',
         paddingHorizontal: 20,
         paddingTop: 20,
-        paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 38 : 28),
         backgroundColor: '#FFFFFF',
     },
     completeButton: {

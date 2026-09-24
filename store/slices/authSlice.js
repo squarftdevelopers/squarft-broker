@@ -212,11 +212,15 @@ export const uploadKyc = createAsyncThunk(
                 headers: { Authorization: `Bearer ${token}` },
                 body: formData,
             });
-            const data = await response.json();
+            const contentType = response.headers.get('content-type') || '';
+            const rawBody = contentType.includes('application/json') ? await response.json() : await response.text();
             console.log('[uploadKyc] response status:', response.status);
-            console.log('[uploadKyc] response data:', JSON.stringify(data));
-            if (!response.ok) return rejectWithValue(data.message);
-            return data;
+            console.log('[uploadKyc] response data:', rawBody);
+            if (!response.ok) {
+                const serverMessage = typeof rawBody === 'string' ? rawBody : (rawBody?.message || rawBody?.error || 'KYC upload failed');
+                return rejectWithValue(serverMessage);
+            }
+            return typeof rawBody === 'string' ? { message: rawBody } : rawBody;
         } catch (err) {
             console.log('[uploadKyc] caught error:', err.message);
             return rejectWithValue(err.message);
