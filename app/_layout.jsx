@@ -3,13 +3,14 @@ import { StatusBar } from "expo-status-bar";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import { Alert, BackHandler, Platform, useColorScheme } from "react-native";
+import { Alert, AppState, BackHandler, Platform, useColorScheme } from "react-native";
 import * as NavigationBar from "expo-navigation-bar";
-import { Provider, useDispatch } from 'react-redux';
-import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import { Provider, useDispatch, useSelector } from 'react-redux';
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import "../global.css";
 import { store } from '../store/store';
-import { loadToken } from '../store/slices/authSlice';
+import { loadToken, logout } from '../store/slices/authSlice';
+import { getJwtExpiryMs, isJwtExpired } from '../utils/tokenExpiry';
 import {
     useFonts,
     Lato_400Regular,
@@ -27,7 +28,6 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import PushNotificationRegistrar from "../components/PushNotificationRegistrar";
 import AnimatedSplashScreen from "../components/AnimatedSplashScreen";
-import KycModal from "../components/KycModal";
 import {
     Roboto_400Regular,
     Roboto_500Medium,
@@ -71,9 +71,45 @@ function AndroidExitGuard() {
     return null;
 }
 
-function BrokerKycModal() {
-    const insets = useSafeAreaInsets();
-    return <KycModal insets={insets} />;
+function SessionExpiryGuard() {
+    const dispatch = useDispatch();
+    const router = useRouter();
+    const token = useSelector((state) => state.auth.token);
+    const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
+
+    useEffect(() => {
+        if (!token || !isLoggedIn) return undefined;
+
+        let expiryTimer;
+        let signingOut = false;
+        const signOutIfExpired = () => {
+            if (signingOut || !isJwtExpired(token)) return;
+            signingOut = true;
+            dispatch(logout());
+            router.replace('/(auth)/login');
+        };
+
+        const expiresAt = getJwtExpiryMs(token);
+        if (expiresAt !== null) {
+            const delay = expiresAt - Date.now();
+            if (delay <= 0) {
+                signOutIfExpired();
+            } else {
+                expiryTimer = setTimeout(signOutIfExpired, Math.min(delay, 2147483647));
+            }
+        }
+
+        const appStateSubscription = AppState.addEventListener('change', (state) => {
+            if (state === 'active') signOutIfExpired();
+        });
+
+        return () => {
+            if (expiryTimer) clearTimeout(expiryTimer);
+            appStateSubscription.remove();
+        };
+    }, [dispatch, isLoggedIn, router, token]);
+
+    return null;
 }
 
 export default function AuthLayout() {
@@ -122,7 +158,7 @@ export default function AuthLayout() {
                     <BottomSheetModalProvider>
                         <AppInit>
                             <AndroidExitGuard />
-                            <BrokerKycModal />
+                            <SessionExpiryGuard />
                             <PushNotificationRegistrar />
                             <Stack>
                                 <Stack.Screen name="index" options={{ headerShown: false }} />

@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { fetchNotifications } from './notificationSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isJwtExpired } from '../../utils/tokenExpiry';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.31.27:3001';
 
@@ -46,6 +47,14 @@ export const loadToken = createAsyncThunk('auth/loadToken', async (_, { dispatch
             // A fresh URL will be fetched via fetchUserProfile/fetchKyc below.
             if (user) delete user.profilePictureUrl;
         } catch (e) {}
+    }
+    if (token && isJwtExpired(token)) {
+        await Promise.all([
+            AsyncStorage.removeItem('auth_token'),
+            AsyncStorage.removeItem('auth_user'),
+            AsyncStorage.removeItem('userData'),
+        ]);
+        return { token: null, user: null };
     }
     if (token) {
         dispatch(fetchUserProfile());

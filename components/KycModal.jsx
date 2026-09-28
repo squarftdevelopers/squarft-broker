@@ -9,15 +9,17 @@ const KycModal = ({ insets = { bottom: 0 } }) => {
     const dispatch = useDispatch();
     const pathname = usePathname();
     const bottomSheetModalRef = useRef(null);
-    const { isKycCompleted, kycChecked, kycLoading, token, kyc } = useSelector((state) => state.auth);
-    const kycStatus = String(kyc?.verification_status || '').toLowerCase();
+    const { isLoggedIn, isKycCompleted, kycChecked, kycLoading, token, kyc } = useSelector((state) => state.auth);
+    const kycStatus = String(
+        kyc?.verification_status || kyc?.kyc_status || kyc?.approval_status || 'missing'
+    ).toLowerCase();
     const isSubmitted = ['pending', 'submitted', 'under_review', 'in_review'].includes(kycStatus);
     const isRejected = kycStatus === 'rejected';
 
     const snapPoints = useMemo(() => ['92%'], []);
     const shouldHideForRoute = pathname.includes('kyc');
     const isApproved = ['approved', 'verified'].includes(kycStatus) || isKycCompleted;
-    const shouldPromptKyc = Boolean(token) && kycChecked && !isApproved && !shouldHideForRoute;
+    const shouldPromptKyc = isLoggedIn && Boolean(token) && kycChecked && !isApproved && !shouldHideForRoute;
 
     const renderBackdrop = useCallback(
         (props) => (

@@ -465,7 +465,10 @@ export default function Home() {
 
             {/* Nested Sub-categories grid rendering */}
             {selectedCategory && currentSubTypes.length > 0 && (
-              <View className="flex-row flex-wrap justify-between mt-2">
+              <View
+                className="flex-row flex-wrap mt-2"
+                style={{ justifyContent: 'flex-start', columnGap: 16 / 3 }}
+              >
                 {currentSubTypes.map((subType) => {
                   const isSelected = selectedPropertyType === subType.id;
                   return (

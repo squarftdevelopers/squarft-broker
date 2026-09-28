@@ -35,7 +35,7 @@ const PremiumRangeSlider = ({
     const [displayMax, setDisplayMax] = useState(initialMaxValue);
     const [activeThumb, setActiveThumb] = useState(null);
     const [sliderWidth, setSliderWidth] = useState(0);
-    const dragStart = useRef(0);
+    const activeThumbRef = useRef(null);
 
     // Convert value to position coordinates
     const valueToPosition = useCallback((value) => {
@@ -66,96 +66,58 @@ const PremiumRangeSlider = ({
     const updateValues = useCallback((newMin, newMax, isFinal = false) => {
         currentMinValue.current = newMin;
         currentMaxValue.current = newMax;
+        setDisplayMin(newMin);
+        setDisplayMax(newMax);
 
         if (isFinal) {
-            setDisplayMin(newMin);
-            setDisplayMax(newMax);
             onValuesChangeFinish?.([newMin, newMax]);
         } else {
             onValuesChange?.([newMin, newMax]);
         }
     }, [onValuesChange, onValuesChangeFinish]);
 
-    // MIN THUMB PAN RESPONDER WITH POSITION FRICTION
-    const minPanResponder = useMemo(() =>
-        PanResponder.create({
-            // Do not capture the initial touch. This lets the parent bottom-sheet
-            // scroll view take over when a vertical swipe starts on a thumb.
-            onStartShouldSetPanResponder: () => false,
-            onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-                Math.abs(dx) > 3 && Math.abs(dx) > Math.abs(dy),
-            onPanResponderGrant: () => {
-                dragStart.current = valueToPosition(currentMinValue.current);
-                setActiveThumb('min');
-            },
-            onPanResponderMove: (_, gestureState) => {
-                const currentMaxPos = valueToPosition(currentMaxValue.current);
-                
-                // FIXED: Calculates location based on absolute screen coordinates relative to container start padding.
-                // This eliminates fluid vector drift and acts as infinite immediate drag friction.
-                const absoluteTargetPosition = dragStart.current + gestureState.dx;
-                
-                const newPosition = Math.max(
-                    0,
-                    Math.min(
-                        currentMaxPos,
-                        absoluteTargetPosition
-                    )
-                );
+    const moveActiveThumb = useCallback((position) => {
+        const clampedPosition = Math.max(0, Math.min(sliderWidth, position));
 
-                minThumbPosition.setValue(newPosition);
-                const newValue = positionToValue(newPosition);
-                
-                if (newValue !== currentMinValue.current) {
-                    updateValues(newValue, currentMaxValue.current, false);
-                }
-            },
-            onPanResponderRelease: () => {
-                setActiveThumb(null);
-                updateValues(currentMinValue.current, currentMaxValue.current, true);
-            },
-            onPanResponderTerminate: () => setActiveThumb(null),
-            onPanResponderTerminationRequest: () => true,
-        }), [positionToValue, updateValues, valueToPosition, minThumbPosition]);
+        if (activeThumbRef.current === 'min') {
+            const maxPosition = valueToPosition(currentMaxValue.current);
+            const nextValue = positionToValue(Math.min(clampedPosition, maxPosition));
+            minThumbPosition.setValue(valueToPosition(nextValue));
+            updateValues(nextValue, currentMaxValue.current, false);
+        } else if (activeThumbRef.current === 'max') {
+            const minPosition = valueToPosition(currentMinValue.current);
+            const nextValue = positionToValue(Math.max(clampedPosition, minPosition));
+            maxThumbPosition.setValue(valueToPosition(nextValue));
+            updateValues(currentMinValue.current, nextValue, false);
+        }
+    }, [maxThumbPosition, minThumbPosition, positionToValue, sliderWidth, updateValues, valueToPosition]);
 
-    // MAX THUMB PAN RESPONDER WITH POSITION FRICTION
-    const maxPanResponder = useMemo(() =>
-        PanResponder.create({
-            onStartShouldSetPanResponder: () => false,
-            onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-                Math.abs(dx) > 3 && Math.abs(dx) > Math.abs(dy),
-            onPanResponderGrant: () => {
-                dragStart.current = valueToPosition(currentMaxValue.current);
-                setActiveThumb('max');
-            },
-            onPanResponderMove: (_, gestureState) => {
-                const currentMinPos = valueToPosition(currentMinValue.current);
-                
-                // FIXED: Calculates location based on absolute screen coordinates relative to container start padding.
-                const absoluteTargetPosition = dragStart.current + gestureState.dx;
-                
-                const newPosition = Math.max(
-                    currentMinPos,
-                    Math.min(
-                        sliderWidth,
-                        absoluteTargetPosition
-                    )
-                );
+    const rangePanResponder = useMemo(() => PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: (event) => {
+            const touchPosition = event.nativeEvent.locationX;
+            const minDistance = Math.abs(touchPosition - valueToPosition(currentMinValue.current));
+            const maxDistance = Math.abs(touchPosition - valueToPosition(currentMaxValue.current));
+            const thumb = minDistance <= maxDistance ? 'min' : 'max';
 
-                maxThumbPosition.setValue(newPosition);
-                const newValue = positionToValue(newPosition);
-                
-                if (newValue !== currentMaxValue.current) {
-                    updateValues(currentMinValue.current, newValue, false);
-                }
-            },
-            onPanResponderRelease: () => {
-                setActiveThumb(null);
-                updateValues(currentMinValue.current, currentMaxValue.current, true);
-            },
-            onPanResponderTerminate: () => setActiveThumb(null),
-            onPanResponderTerminationRequest: () => true,
-        }), [positionToValue, sliderWidth, updateValues, valueToPosition, maxThumbPosition]);
+            activeThumbRef.current = thumb;
+            setActiveThumb(thumb);
+            moveActiveThumb(touchPosition);
+        },
+        onPanResponderMove: (event) => moveActiveThumb(event.nativeEvent.locationX),
+        onPanResponderRelease: () => {
+            activeThumbRef.current = null;
+            setActiveThumb(null);
+            updateValues(currentMinValue.current, currentMaxValue.current, true);
+        },
+        onPanResponderTerminate: () => {
+            activeThumbRef.current = null;
+            setActiveThumb(null);
+            updateValues(currentMinValue.current, currentMaxValue.current, true);
+        },
+        onPanResponderTerminationRequest: () => false,
+    }), [moveActiveThumb, updateValues, valueToPosition]);
 
     const activeTrackStyle = useMemo(() => ({
         left: minThumbPosition.interpolate({
@@ -183,12 +145,17 @@ const PremiumRangeSlider = ({
             </View>
 
             {/* Slider Track Body Field */}
-            <View style={styles.sliderContainer} onLayout={(event) => setSliderWidth(event.nativeEvent.layout.width)}>
+            <View
+                style={styles.sliderContainer}
+                onLayout={(event) => setSliderWidth(event.nativeEvent.layout.width)}
+                {...rangePanResponder.panHandlers}
+            >
                 {/* Inactive Track */}
-                <View style={[styles.track, styles.inactiveTrack]} />
+                <View pointerEvents="none" style={[styles.track, styles.inactiveTrack]} />
 
                 {/* Active Track */}
-                <Animated.View 
+                <Animated.View
+                    pointerEvents="none"
                     style={[
                         styles.track, 
                         styles.activeTrack,
@@ -198,6 +165,7 @@ const PremiumRangeSlider = ({
 
                 {/* Min Thumb Rectangular Pill */}
                 <Animated.View
+                    pointerEvents="none"
                     style={[
                         styles.thumb,
                         {
@@ -209,11 +177,11 @@ const PremiumRangeSlider = ({
                             ],
                         },
                     ]}
-                    {...minPanResponder.panHandlers}
                 />
 
                 {/* Max Thumb Rectangular Pill */}
                 <Animated.View
+                    pointerEvents="none"
                     style={[
                         styles.thumb,
                         {
@@ -225,7 +193,6 @@ const PremiumRangeSlider = ({
                             ],
                         },
                     ]}
-                    {...maxPanResponder.panHandlers}
                 />
             </View>
         </View>
@@ -253,7 +220,7 @@ const styles = StyleSheet.create({
         color: '#666666',
     },
     sliderContainer: {
-        height: THUMB_HEIGHT + 10, 
+        height: 48,
         justifyContent: 'center',
         position: 'relative',
     },

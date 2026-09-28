@@ -1,12 +1,13 @@
-import { Tabs, useRouter } from "expo-router";
+import { Redirect, Tabs, useRouter } from "expo-router";
 import { Platform, Pressable, View } from "react-native";
 import House from "lucide-react-native/icons/house";
 import Bookmark from "lucide-react-native/icons/bookmark";
 import Settings from "lucide-react-native/icons/settings";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { clearCurrentItem } from "../../store/slices/myAddedSlice";
+import KycModal from "../../components/KycModal";
 
 const TAB_COLOR = "#4A43EC";
 const MUTED_TAB_COLOR = "#62676B";
@@ -58,6 +59,7 @@ function AddTabIcon() {
 export default function TabsLayout() {
     const router = useRouter();
     const dispatch = useDispatch();
+    const { isLoggedIn, authChecked } = useSelector((state) => state.auth);
     const insets = useSafeAreaInsets();
     const androidBottomInset = Platform.OS === "android" ? Math.max(insets.bottom, 0) : 0;
     const iosBottomPadding = Platform.OS === "ios" ? Math.max(insets.bottom - 8, 4) : 6;
@@ -65,6 +67,10 @@ export default function TabsLayout() {
         dispatch(clearCurrentItem());
         router.replace(`/(tabs)/addProperty?fresh=${Date.now()}`);
     };
+
+    if (authChecked && !isLoggedIn) {
+        return <Redirect href="/(auth)/login" />;
+    }
 
     return (
         <>
@@ -168,6 +174,7 @@ export default function TabsLayout() {
                     }}
                 />
             </Tabs>
+            <KycModal insets={insets} />
         </>
     );
 }

@@ -16,20 +16,21 @@ const PropertyCard = ({ item, propertyTypeLabel, onPress }) => {
     const date = item.date || new Date(item.created_at || Date.now()).toLocaleDateString();
     
     // 🔄 FIXED: Strictly check the 'approval_status' column values exclusively
-    const rawStatus = String(item.approval_status || '').trim().toLowerCase();
+    const rawApprovalStatus = String(item.approval_status || '').trim().toLowerCase();
+    const rawLifecycleStatus = String(item.status || item.listing_status || '').trim().toLowerCase();
     
     let status = 'Pending'; // Default state if it's empty or processing
-    if (rawStatus === 'approved') {
+    if (rawApprovalStatus === 'approved' || ['published', 'live', 'active'].includes(rawLifecycleStatus)) {
         status = 'Approved';
-    } else if (rawStatus === 'not approved' || rawStatus === 'rejected') {
+    } else if (['not approved', 'rejected'].includes(rawApprovalStatus) || rawLifecycleStatus === 'rejected') {
         status = 'Not Approved';
-    } else if (rawStatus === 'pending') {
+    } else if (rawApprovalStatus === 'pending' || ['draft', 'pending_review', 'pending', 'under_review', 'in_review'].includes(rawLifecycleStatus)) {
         status = 'Pending';
-    } else if (rawStatus === '') {
+    } else if (rawApprovalStatus === '' && rawLifecycleStatus === '') {
         status = 'N/A'; // Keeps your baseline fallback clean if columns are unpopulated
     } else {
         // Fallback for any other custom string the backend might pass (e.g., "In Review")
-        status = item.approval_status; 
+        status = item.approval_status || item.status;
     }
 
     return (
