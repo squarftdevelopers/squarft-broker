@@ -23,7 +23,7 @@ const { width } = Dimensions.get("window");
 
 const marketingBanners = [
   require("../../assets/images/banner2.png"),
-  require("../../assets/images/banner2.jpeg"),
+  require("../../assets/images/banner1.jpeg"),
   require("../../assets/images/banner3.jpeg"),
 ];
 const loopingMarketingBanners = [...marketingBanners, marketingBanners[0]];
