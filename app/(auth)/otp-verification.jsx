@@ -26,6 +26,7 @@ export default function OtpVerification() {
     }, [dispatch]);
 
     const change = useCallback((text, index) => {
+        dispatch(clearError());
         const digits = text.replace(/[^0-9]/g, "");
         if (digits.length > 1) {
             digits.slice(0, 6).split("").forEach((digit, digitIndex) => dispatch(setOtpDigit({ index: digitIndex, value: digit })));

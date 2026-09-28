@@ -464,12 +464,32 @@ const authSlice = createSlice({
                 state.error = action.payload;
             })
             // Send OTP
+            .addCase(sendOtpApi.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(sendOtpApi.fulfilled, (state, action) => {
+                state.loading = false;
+                state.error = null;
                 state.otpToken = action.payload.otp_token;
             })
+            .addCase(sendOtpApi.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload || action.error?.message || 'Unable to send OTP. Please try again.';
+            })
             // Verify OTP
+            .addCase(verifyOtpApi.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(verifyOtpApi.fulfilled, (state, action) => {
+                state.loading = false;
+                state.error = null;
                 state.verifiedToken = action.payload.verified_token;
+            })
+            .addCase(verifyOtpApi.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload || action.error?.message || 'Invalid OTP. Please try again.';
             })
             // Load token
             .addCase(loadToken.fulfilled, (state, action) => {

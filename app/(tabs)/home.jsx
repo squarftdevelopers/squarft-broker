@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   Image,
   Platform,
@@ -20,6 +20,13 @@ import { fetchNotifications } from "../../store/slices/notificationSlice";
 import { sanitizeS3Url } from "../../utils/s3ImageUrl";
 
 const { width } = Dimensions.get("window");
+
+const marketingBanners = [
+  require("../../assets/images/banner2.png"),
+  require("../../assets/images/banner2.jpeg"),
+  require("../../assets/images/banner3.jpeg"),
+];
+const loopingMarketingBanners = [...marketingBanners, marketingBanners[0]];
 
 const EMPTY_PROPERTIES = [];
 const buyFilter = "Customer Requirement";
@@ -79,6 +86,9 @@ export default function Home() {
   const [selectedPropertyType, setSelectedPropertyType] = useState(null);
   const [avatarLoadError, setAvatarLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeBanner, setActiveBanner] = useState(0);
+  const bannerScrollRef = useRef(null);
+  const bannerIndexRef = useRef(0);
   
   const dispatch = useDispatch();
   const unwatchedCount = useSelector(state => state.notifications?.list?.filter(n => !n.watched && !n.is_read).length || 0);
@@ -222,6 +232,32 @@ export default function Home() {
     setAvatarLoadError(false);
   }, [avatarUrl]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nextIndex = bannerIndexRef.current + 1;
+      bannerIndexRef.current = nextIndex;
+      bannerScrollRef.current?.scrollTo({ x: nextIndex * width, animated: true });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleBannerMomentumEnd = useCallback((event) => {
+    const pageIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+
+    if (pageIndex === marketingBanners.length) {
+      setActiveBanner(0);
+      bannerIndexRef.current = 0;
+      requestAnimationFrame(() => {
+        bannerScrollRef.current?.scrollTo({ x: 0, animated: false });
+      });
+      return;
+    }
+
+    bannerIndexRef.current = pageIndex;
+    setActiveBanner(pageIndex);
+  }, []);
+
   return (
     <View className="flex-1 bg-white">
       <StatusBar
@@ -320,12 +356,42 @@ export default function Home() {
         </View>
 
         {/* 🎞️ NATIVE GRAPHIC MARKETING BANNER SLIDER (Rendered inside natural linear stream to eliminate grey rendering traps) */}
-        <View style={{ backgroundColor: '#3d34e5ff', paddingTop:40, paddingBottom: 9}}>
-          <Image
-            source={require("../../assets/images/banner2.png")}
-            style={{ width: '100%', height: 175 }}
-            resizeMode="cover"
-          />
+        <View style={{ backgroundColor: '#3d34e5ff', paddingTop: 40, paddingBottom: 9, position: 'relative' }}>
+          <ScrollView
+            ref={bannerScrollRef}
+            horizontal
+            pagingEnabled
+            bounces={false}
+            decelerationRate="fast"
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleBannerMomentumEnd}
+            scrollEventThrottle={16}
+          >
+            {loopingMarketingBanners.map((banner, index) => (
+              <Image
+                key={`marketing-banner-${index}`}
+                source={banner}
+                style={{ width, height: 175 }}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
+          <View
+            pointerEvents="none"
+            style={{ position: 'absolute', bottom: 28, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+          >
+            {marketingBanners.map((_, index) => (
+              <View
+                key={`banner-indicator-${index}`}
+                style={{
+                  width: activeBanner === index ? 18 : 6,
+                  height: 6,
+                  borderRadius: 999,
+                  backgroundColor: activeBanner === index ? '#FFFFFF' : 'rgba(255,255,255,0.5)',
+                }}
+              />
+            ))}
+          </View>
         </View>
 
         {/* 🏛️ CLEAN LOWER MAIN WHITE CONTENT SECTION */}
