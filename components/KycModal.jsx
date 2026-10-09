@@ -1,9 +1,9 @@
 import React, { useRef, useEffect, useMemo, useCallback, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Image, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { router, usePathname } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import { fetchKyc } from '../store/slices/authSlice';
+import { fetchKyc, logout } from '../store/slices/authSlice';
 
 const KycModal = ({ insets = { bottom: 0 } }) => {
     const dispatch = useDispatch();
@@ -53,7 +53,8 @@ const KycModal = ({ insets = { bottom: 0 } }) => {
 
     const [refreshing, setRefreshing] = useState(false);
     const isRefreshing = isSubmitted && (refreshing || kycLoading);
-    const bottomBarPaddingBottom = Math.max(insets.bottom, Platform.OS === 'ios' ? 38 : 28);
+    // BottomSheetModal already applies the safe-area bottom inset.
+    const bottomBarPaddingBottom = 4;
 
     const handleKycAction = async () => {
         if (isSubmitted) {
@@ -70,6 +71,12 @@ const KycModal = ({ insets = { bottom: 0 } }) => {
         }
         bottomSheetModalRef.current?.dismiss();
         router.push('/(screens)/kyc');
+    };
+
+    const handleLogout = () => {
+        bottomSheetModalRef.current?.dismiss();
+        dispatch(logout());
+        router.replace('/(auth)/login');
     };
 
     return (
@@ -132,6 +139,9 @@ const KycModal = ({ insets = { bottom: 0 } }) => {
                                 {isSubmitted ? 'Refresh Status' : isRejected ? 'Re-upload Documents' : 'Complete KYC'}
                             </Text>
                         )}
+                    </Pressable>
+                    <Pressable style={styles.logoutButton} onPress={handleLogout} hitSlop={8}>
+                        <Text style={styles.logoutText}>Log out</Text>
                     </Pressable>
                 </View>
             </BottomSheetView>
@@ -246,6 +256,17 @@ const styles = StyleSheet.create({
     },
     disabledButton: {
         opacity: 0.85,
+    },
+    logoutButton: {
+        alignSelf: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 3,
+    },
+    logoutText: {
+        color: '#DC2626',
+        fontSize: 12,
+        fontWeight: '600',
+        fontFamily: 'Lato-Bold',
     },
 });
 
