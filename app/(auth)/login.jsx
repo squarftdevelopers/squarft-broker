@@ -24,7 +24,7 @@ export default function Login() {
         dispatch(setMobile(phone));
         const result = await dispatch(startLogin({ phone }));
         if (startLogin.fulfilled.match(result)) {
-            router.push(result.payload.needsRegistration ? "/(auth)/register" : "/(auth)/otp-verification");
+            router.push("/(auth)/otp-verification");
         }
     }, [loading, localNumber, dispatch]);
 

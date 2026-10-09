@@ -75,12 +75,9 @@ export const startLogin = createAsyncThunk(
             });
             const data = await response.json();
             if (!response.ok) {
-                if (response.status === 400 && data.message === 'No account found with this phone number') {
-                    return { needsRegistration: true };
-                }
                 return rejectWithValue(data.message);
             }
-            return { ...data, needsRegistration: false };
+            return data;
         } catch (err) { return rejectWithValue(err.name === 'AbortError' ? 'Request timed out. Please check your connection and try again.' : err.message); }
     }
 );
@@ -418,7 +415,7 @@ const authSlice = createSlice({
             .addCase(startLogin.pending, (state) => { state.loading = true; state.error = null; })
             .addCase(startLogin.fulfilled, (state, action) => {
                 state.loading = false;
-                state.otpFlow = action.payload.needsRegistration ? 'register' : 'login';
+                state.otpFlow = 'login';
                 state.otpToken = action.payload.otp_token || null;
             })
             .addCase(startLogin.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
