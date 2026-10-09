@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { shallowEqual, useDispatch, useSelector } from 'react-redux';
@@ -36,6 +37,7 @@ export default function PushNotificationRegistrar() {
 
         let isActive = true;
         lastAttemptedTokenRef.current = token;
+        dispatch(fetchNotifications());
 
         const runRegistration = async () => {
             try {
@@ -60,7 +62,15 @@ export default function PushNotificationRegistrar() {
         return () => {
             isActive = false;
         };
-    }, [isLoggedIn, token]);
+    }, [dispatch, isLoggedIn, token]);
+
+    useEffect(() => {
+        if (!isLoggedIn || !token) return undefined;
+        const subscription = AppState.addEventListener('change', (state) => {
+            if (state === 'active') dispatch(fetchNotifications());
+        });
+        return () => subscription.remove();
+    }, [dispatch, isLoggedIn, token]);
 
     useEffect(() => {
         const handleNotificationTap = (response) => {
