@@ -39,11 +39,11 @@ const areaUnits = ["Square Feet (sq ft)", "Square Meter (sq m)", "Acre", "Hectar
 const AREA_UNIT_ITEMS = areaUnits.map(x => ({ id: x, name: x }));
 const steps = ["Basic Details", "Owner Detail", "Property Detail", "Image & Price"];
 
-const Field = ({ label, value, onChangeText, placeholder, keyboardType, left, right, style }) => <View style={[{ marginBottom: 24 }, style]}>
+const Field = ({ label, value, onChangeText, placeholder, keyboardType, left, right, style, editable = true, onPressIn }) => <View style={[{ marginBottom: 24 }, style]}>
   {!!label && <Text style={{ fontSize: 14, color: "#111", marginBottom: 10 }}>{label}</Text>}
   <View style={{ minHeight: 47, borderWidth: 1, borderColor: "#C9C9CE", borderRadius: 7, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, backgroundColor: "#fff" }}>
     {left}
-    <TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor="#8E8E96" keyboardType={keyboardType} style={{ flex: 1, fontSize: 12, color: "#17171B", paddingVertical: 12 }} />
+    <TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor="#8E8E96" keyboardType={keyboardType} editable={editable} onPressIn={onPressIn} style={{ flex: 1, fontSize: 12, color: "#17171B", paddingVertical: 12 }} />
     {right}
   </View>
 </View>;
@@ -125,11 +125,18 @@ export default function AddProperty() {
 
   const selectedProject = useMemo(() => projects.find(p => p.id === details.projectId), [projects, details.projectId]);
   const selectedUnitLabel = useMemo(() => details.areaUnit.split(" (")[0], [details.areaUnit]);
+  const hasValidCoordinates = details.latitude !== null && details.latitude !== "" && details.longitude !== null && details.longitude !== ""
+    && Number.isFinite(Number(details.latitude)) && Number.isFinite(Number(details.longitude))
+    && Math.abs(Number(details.latitude)) <= 90 && Math.abs(Number(details.longitude)) <= 180;
   const validate = () => {
     if (step === 1 && (!category || !subType || !kind)) return "Select the property category, type and subtype.";
     if (step === 2 && (!owner.name.trim() || !owner.phone.trim() || !owner.address.trim())) return "Enter owner name, contact number and address.";
     if (step === 2 && !ownerOtp.verifiedToken) return "Verify the owner contact number with OTP.";
-    if (step === 3 && (!details.location.trim() || !details.city.trim() || !details.state.trim() || !details.pincode.trim() || !details.projectId || !details.totalArea.trim())) return "Complete the location, parent project and area fields.";
+    if (step === 3) {
+      if (!details.location.trim() || !hasValidCoordinates) return "Select the property location from the map so its coordinates are saved.";
+      if (!details.projectId) return "Select the parent project.";
+      if (!details.totalArea.trim() || !Number.isFinite(Number(details.totalArea)) || Number(details.totalArea) <= 0) return "Enter a valid total area greater than zero.";
+    }
     if (step === 4 && (images.length < 5 || !pricing.price.trim() || !pricing.confirmed)) return "Upload at least 5 photos, enter the selling price and confirm the declaration.";
     return null;
   };
@@ -211,7 +218,7 @@ export default function AddProperty() {
     <Field label="Property Name (if applicable) :" value={details.name} onChangeText={v => setDetails(d => ({ ...d, name: v }))} placeholder="Enter Property name" />
     <Text style={{ fontSize: 14, marginBottom: 10 }}>Plot / Flat / Villa, shop, office, showroom  House no.</Text>
     <View style={{ flexDirection: "row", gap: 10 }}><Field value={details.tower} onChangeText={v => setDetails(d => ({ ...d, tower: v }))} placeholder="Tower no." style={{ flex: 1 }} /><Field value={details.flat} onChangeText={v => setDetails(d => ({ ...d, flat: v }))} placeholder="Flat no." style={{ flex: 1 }} /></View>
-    <Field label="Location" value={details.location} onChangeText={v => setDetails(d => ({ ...d, location: v }))} placeholder="Address & Landmark" right={<Pressable onPress={() => { Keyboard.dismiss(); setPropertyMapVisible(true); }} hitSlop={12} style={{ width: 30, height: 30, borderRadius: 7, backgroundColor: "#EBEAFF", alignItems: "center", justifyContent: "center" }}><Ionicons name="map-outline" size={18} color={PURPLE} /></Pressable>} />
+    <Field label="Location" value={details.location} editable={false} onPressIn={() => { Keyboard.dismiss(); setPropertyMapVisible(true); }} placeholder="Select location on map" right={<Pressable onPress={() => { Keyboard.dismiss(); setPropertyMapVisible(true); }} hitSlop={12} style={{ width: 30, height: 30, borderRadius: 7, backgroundColor: "#EBEAFF", alignItems: "center", justifyContent: "center" }}><Ionicons name="map-outline" size={18} color={PURPLE} /></Pressable>} />
     <View style={{ flexDirection: "row", gap: 10 }}><Field label="City" value={details.city} onChangeText={v => setDetails(d => ({ ...d, city: v }))} placeholder="city" style={{ flex: 1 }} /><Field label="State" value={details.state} onChangeText={v => setDetails(d => ({ ...d, state: v }))} placeholder="state" style={{ flex: 1 }} /><Field label="Pincode" value={details.pincode} onChangeText={v => setDetails(d => ({ ...d, pincode: v }))} placeholder="pincode" keyboardType="number-pad" style={{ flex: 1 }} /></View>
     <Text style={{ fontSize: 14, marginBottom: 10 }}>Select Project</Text><Pressable onPress={() => { if (!projects.length) loadProjects(); setPicker("project"); }} style={{ height: 47, borderWidth: 1, borderColor: "#C9C9CE", borderRadius: 7, paddingHorizontal: 14, alignItems: "center", flexDirection: "row", marginBottom: 24 }}><Text style={{ flex: 1, color: selectedProject ? "#17171B" : "#8E8E96", fontSize: 12 }}>{selectedProject?.name || "Select Live Project Near You"}</Text><Ionicons name="chevron-down-circle-outline" size={18} color="#BFC0C7" /></Pressable>
     <View style={{ flexDirection: "row", gap: 24 }}><Field label="Total Area" value={details.totalArea} onChangeText={v => setDetails(d => ({ ...d, totalArea: v }))} placeholder="eg 1000" keyboardType="decimal-pad" right={<Pressable onPress={() => setPicker("unit")}><Text style={{ fontSize: 11 }}>{selectedUnitLabel}</Text></Pressable>} style={{ flex: 1 }} /><Field label="Carpet Area" value={details.carpetArea} onChangeText={v => setDetails(d => ({ ...d, carpetArea: v }))} placeholder="eg 200" keyboardType="decimal-pad" right={<Pressable onPress={() => setPicker("unit")}><Text style={{ fontSize: 11 }}>{selectedUnitLabel}</Text></Pressable>} style={{ flex: 1 }} /></View>

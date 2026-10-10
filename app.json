@@ -65,7 +65,7 @@
         {
           "icon": "./assets/icons/notification-icon.png",
           "color": "#4A43EC",
-          "defaultChannel": "broker_app_default"
+          "defaultChannel": "broker-updates"
         }
       ],
       "@react-native-community/datetimepicker"
@@ -73,7 +73,7 @@
     "extra": {
       "pushNotifications": {
         "appKey": "broker_app",
-        "androidChannelId": "broker_app_default"
+        "androidChannelId": "broker-updates"
       },
       "router": {},
       "eas": {
