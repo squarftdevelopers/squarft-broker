@@ -48,7 +48,7 @@ export default function Login() {
                             <TextInput
                                 value={localNumber}
                                 onChangeText={(v) => setLocalNumber(v.replace(/[^0-9]/g, "").slice(0, 10))}
-                                placeholder="Phone Number"
+                                placeholder="eg. 7867986757"
                                 placeholderTextColor="#aaa"
                                 keyboardType="phone-pad"
                                 maxLength={10}

@@ -1,9 +1,8 @@
+import { pickUpload } from "../../utils/pickUpload";
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { ActivityIndicator, Alert, Image, Keyboard, Modal, Platform, Pressable, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
-import * as DocumentPicker from "expo-document-picker";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { brokerPropertyApi } from "../../services/projectApi";
 import LocationMapPicker from "../../components/LocationMapPicker";
@@ -142,10 +141,10 @@ export default function AddProperty() {
   };
   const next = () => { const error = validate(); if (error) return Alert.alert("Details required", error); setStep(s => Math.min(4, s + 1)); };
   const pickImages = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsMultipleSelection: true, selectionLimit: 8, quality: 0.85 });
+    const result = await pickUpload({ mediaTypes: ["images"], allowsMultipleSelection: true, selectionLimit: 8, quality: 0.85 });
     if (!result.canceled) setImages(prev => [...prev, ...result.assets].slice(0, 8));
   };
-  const pickDocuments = async () => { const result = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true }); if (!result.canceled) setDocuments(result.assets.slice(0, 7)); };
+  const pickDocuments = async () => { const result = await pickUpload({ multiple: true, copyToCacheDirectory: true }, true); if (!result.canceled) setDocuments(result.assets.slice(0, 7)); };
   const sendOwnerOtp = async () => {
     const phone = owner.phone.replace(/\D/g, "");
     if (phone.length !== 10) return Alert.alert("Invalid number", "Enter a valid 10-digit owner contact number.");
@@ -210,7 +209,7 @@ export default function AddProperty() {
   </>;
   const renderStep2 = () => <>
     <Field label="Owner Name" value={owner.name} onChangeText={v => setOwner(o => ({ ...o, name: v }))} placeholder="Enter Owner Name" />
-    <Field label="Owner Contact No." value={owner.phone} onChangeText={v => { setOwner(o => ({ ...o, phone: v.replace(/\D/g, "").slice(0, 10) })); setOwnerOtp({ token: "", verifiedToken: "", sending: false, verifying: false }); }} placeholder="8120180101" keyboardType="phone-pad" left={<Text style={{ color: "#17171B", fontSize: 13, marginRight: 7 }}>+91</Text>} right={<Pressable disabled={ownerOtp.sending} onPress={sendOwnerOtp}><Text style={{ color: PURPLE, fontSize: 14 }}>{ownerOtp.sending ? "Sending..." : ownerOtp.token ? "Resend OTP" : "Send OTP"}</Text></Pressable>} />
+    <Field label="Owner Contact No." value={owner.phone} onChangeText={v => { setOwner(o => ({ ...o, phone: v.replace(/\D/g, "").slice(0, 10) })); setOwnerOtp({ token: "", verifiedToken: "", sending: false, verifying: false }); }} placeholder="eg. 7867986757" keyboardType="phone-pad" left={<Text style={{ color: "#17171B", fontSize: 13, marginRight: 7 }}>+91</Text>} right={<Pressable disabled={ownerOtp.sending} onPress={sendOwnerOtp}><Text style={{ color: PURPLE, fontSize: 14 }}>{ownerOtp.sending ? "Sending..." : ownerOtp.token ? "Resend OTP" : "Send OTP"}</Text></Pressable>} />
     <Field label="Enter OTP" value={owner.otp} onChangeText={v => setOwner(o => ({ ...o, otp: v.replace(/\D/g, "").slice(0, 6) }))} placeholder="Enter 6-digit OTP" keyboardType="number-pad" right={ownerOtp.verifiedToken ? <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}><Ionicons name="checkmark-circle" size={19} color="#16A34A" /><Text style={{ color: "#16A34A", fontSize: 12 }}>Verified</Text></View> : <Pressable disabled={ownerOtp.verifying} onPress={verifyOwnerOtp}><Text style={{ color: PURPLE, fontSize: 13 }}>{ownerOtp.verifying ? "Verifying..." : "Verify OTP"}</Text></Pressable>} />
     <Field label="Owner Address" value={owner.address} onChangeText={v => setOwner(o => ({ ...o, address: v }))} placeholder="Select Address" right={<Pressable onPress={() => { Keyboard.dismiss(); setOwnerMapVisible(true); }} hitSlop={12} style={{ width: 30, height: 30, borderRadius: 7, backgroundColor: "#EBEAFF", alignItems: "center", justifyContent: "center" }}><Ionicons name="map-outline" size={18} color={PURPLE} /></Pressable>} />
   </>;

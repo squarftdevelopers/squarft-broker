@@ -1,3 +1,4 @@
+import MapWithLayers from "./MapWithLayers";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, TextInput, TouchableOpacity, Platform, Modal, ActivityIndicator, Alert, Keyboard, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -160,6 +161,10 @@ const DEFAULT_MAP_REGION = {
  */
 export default function LocationMapPicker({ visible, initialAddress, onClose, onConfirm, confirmLabel = "Continue" }) {
     const mapRef = useRef(null);
+    const initialAddressRef = useRef(initialAddress);
+    const locationRequestRef = useRef(0);
+    const detailsRequestRef = useRef(0);
+    useEffect(() => { initialAddressRef.current = initialAddress; }, [initialAddress]);
     const mountedRef = useRef(true);
     const geocodeRequestRef = useRef(0);
     const searchRequestRef = useRef(0);
@@ -215,23 +220,33 @@ export default function LocationMapPicker({ visible, initialAddress, onClose, on
         mountedRef.current = true;
         setMapReady(false);
         setMode("current");
-        setAddress(initialAddress?.location ? initialAddress : null);
+        const openingAddress = initialAddressRef.current;
+        setAddress(openingAddress?.location ? openingAddress : null);
         setSearchQuery("");
         setSearchResults([]);
         setShowResults(false);
         searchSessionTokenRef.current = null;
         setLocating(true);
+        const locationRequest = ++locationRequestRef.current;
 
         (async () => {
             const nextRegion = await locateDevice();
-            if (!mountedRef.current) return;
+            if (!mountedRef.current || locationRequest !== locationRequestRef.current) return;
             setLocating(false);
             const regionToUse = nextRegion || DEFAULT_MAP_REGION;
             setRegion(regionToUse);
             if (nextRegion) mapRef.current?.animateToRegion(regionToUse, 350);
             resolveAddress(regionToUse);
         })();
-    }, [visible, resolveAddress, initialAddress, locateDevice]);
+        return () => {
+            mountedRef.current = false;
+            locationRequestRef.current += 1;
+            detailsRequestRef.current += 1;
+            searchRequestRef.current += 1;
+            geocodeRequestRef.current += 1;
+            clearTimeout(searchDebounceRef.current);
+        };
+    }, [visible, resolveAddress, locateDevice]);
 
     const handleRegionComplete = useCallback((nextRegion) => {
         setRegion(nextRegion);
@@ -239,8 +254,13 @@ export default function LocationMapPicker({ visible, initialAddress, onClose, on
     }, [resolveAddress]);
 
     const handleUseCurrentLocation = useCallback(async () => {
+        detailsRequestRef.current += 1;
+        const locationRequest = ++locationRequestRef.current;
+        searchRequestRef.current += 1;
+        clearTimeout(searchDebounceRef.current);
         setLocating(true);
         const nextRegion = await locateDevice();
+        if (!mountedRef.current || locationRequest !== locationRequestRef.current) return;
         setLocating(false);
         if (!nextRegion) return;
         setMode("current");
@@ -253,6 +273,13 @@ export default function LocationMapPicker({ visible, initialAddress, onClose, on
     }, [locateDevice, resolveAddress]);
 
     const handleSearchChange = useCallback((text) => {
+        detailsRequestRef.current += 1;
+        geocodeRequestRef.current += 1;
+        setLoading(false);
+        locationRequestRef.current += 1;
+        searchRequestRef.current += 1;
+        setLocating(false);
+        setMode("custom");
         setSearchQuery(text);
         setShowResults(true);
         if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
@@ -280,6 +307,10 @@ export default function LocationMapPicker({ visible, initialAddress, onClose, on
     }, []);
 
     const handleClearSearch = useCallback(() => {
+        detailsRequestRef.current += 1;
+        setLoading(false);
+        searchRequestRef.current += 1;
+        setSearching(false);
         if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
         setSearchQuery("");
         setSearchResults([]);
@@ -287,6 +318,13 @@ export default function LocationMapPicker({ visible, initialAddress, onClose, on
     }, []);
 
     const handleSelectPrediction = useCallback(async (prediction) => {
+        const detailsRequest = ++detailsRequestRef.current;
+        locationRequestRef.current += 1;
+        searchRequestRef.current += 1;
+        geocodeRequestRef.current += 1;
+        clearTimeout(searchDebounceRef.current);
+        setLocating(false);
+        setSearching(false);
         Keyboard.dismiss();
         setShowResults(false);
         setSearchQuery(prediction.description);
@@ -295,7 +333,7 @@ export default function LocationMapPicker({ visible, initialAddress, onClose, on
         try {
             const details = await fetchPlaceDetails(prediction.place_id, searchSessionTokenRef.current);
             searchSessionTokenRef.current = null;
-            if (!mountedRef.current || !details) return;
+            if (!mountedRef.current || detailsRequest !== detailsRequestRef.current || !details) return;
             const nextRegion = { ...DEFAULT_MAP_REGION, latitude: details.latitude, longitude: details.longitude };
             setRegion(nextRegion);
             mapRef.current?.animateToRegion(nextRegion, 350);
@@ -303,7 +341,7 @@ export default function LocationMapPicker({ visible, initialAddress, onClose, on
         } catch (error) {
             console.log('[MAP PICKER] Place details failed:', error);
         } finally {
-            if (mountedRef.current) setLoading(false);
+            if (mountedRef.current && detailsRequest === detailsRequestRef.current) setLoading(false);
         }
     }, []);
 
@@ -321,7 +359,7 @@ export default function LocationMapPicker({ visible, initialAddress, onClose, on
                 insets instead of falling back to 0 and sitting under the notch. */}
             <SafeAreaProvider>
             <View className="flex-1 bg-white">
-                <MapView
+                <MapWithLayers component={MapView} layersTop={160}
                     ref={mapRef}
                     provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
                     style={{ flex: 1 }}

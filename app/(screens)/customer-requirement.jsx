@@ -170,11 +170,11 @@ export default function CustomerRequirement() {
                 <View className="flex-row justify-between mb-3">
                   <View className="flex-row items-center">
                     <MaterialCommunityIcons name="office-building-marker-outline" size={16} color="#4A43EC" />
-                    <Text className="ml-1 text-[10px] text-[#4A43EC] font-lato-bold">{req.property_type}</Text>
+                    <Text className="flex-1 ml-1 text-[10px] text-[#4A43EC] font-lato-bold">{req.property_type}</Text>
                   </View>
                   <View className="flex-row items-center">
                     <MaterialCommunityIcons name="map-marker-outline" size={16} color="#4A43EC" />
-                    <Text className="ml-1 text-[10px] text-[#4A43EC] font-lato-bold" numberOfLines={1}>{req.preferred_locations?.[0] || "N/A"}</Text>
+                    <Text className="flex-1 ml-1 text-[10px] text-[#4A43EC] font-lato-bold" >{[req.customer_address ? `Customer address: ${req.customer_address}` : null, req.preferred_locations?.join("\n")].filter(Boolean).join("\n") || "N/A"}</Text>
                   </View>
                 </View>
 

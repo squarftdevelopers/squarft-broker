@@ -1,3 +1,4 @@
+import MapWithLayers from "../../components/MapWithLayers";
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
     ActivityIndicator,
@@ -398,7 +399,7 @@ export default function LocationPicker() {
 
             <View className="px-5 pb-5">
                 <View className="h-96 rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 mb-4">
-                    <MapView
+                    <MapWithLayers component={MapView} layersTop={12}
                         ref={mapRef}
                         provider={PROVIDER_GOOGLE}
                         style={{ flex: 1 }}

@@ -175,6 +175,7 @@ export default function CustomerDetails() {
 
             <RequirementRow icon="currency-inr" label="Budget Range" value={`${formatCurrency(requirement.budget_min)} - ${formatCurrency(requirement.budget_max)}`} isMCI />
             <RequirementRow icon="home-outline" label="Property Type" value={requirement.property_type} />
+            <RequirementRow icon="location-outline" label="Customer Address" value={requirement.customer_address || "Not provided"} />
             <RequirementRow icon="location" label="Locations" value={requirement.preferred_locations?.join(', ') || "N/A"} />
           </View>
 
@@ -183,9 +184,9 @@ export default function CustomerDetails() {
             <Text className="text-[#4A43EC] text-sm font-lato-bold mb-3 tracking-wide">PREFERRED LOCATIONS</Text>
             <View className="flex-row flex-wrap gap-2">
               {requirement.preferred_locations?.map((loc, index) => (
-                <View key={index} className="border border-[#4A43EC]/20 rounded-full px-4 py-2 flex-row items-center self-start">
+                <View key={index} className="border border-[#4A43EC]/20 rounded-2xl px-4 py-2 flex-row items-center self-start max-w-full">
                   <Ionicons name="location" size={16} color="#4A43EC" />
-                  <Text className="text-[#4A43EC] text-[11px] font-lato-regular ml-2">
+                  <Text className="text-[#4A43EC] text-[11px] font-lato-regular ml-2 flex-shrink">
                     {loc}
                   </Text>
                 </View>

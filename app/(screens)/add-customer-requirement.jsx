@@ -27,7 +27,7 @@ import {
   clearCustomerOtpState
 } from "../../store/slices/requirementsSlice";
 import { brokerPropertyApi } from "../../services/projectApi";
-import LocationMapPicker from "../../components/LocationMapPicker";
+import PreferredLocationsPicker from "../../components/PreferredLocationsPicker";
 import { notifyClientSubmitted } from "../../utils/notificationHelpers";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -104,7 +104,6 @@ export default function AddCustomerRequirement() {
 
   const [otp, setOtp] = useState("");
   const [customerOtp, setCustomerOtp] = useState({ token: "", verifiedToken: "", sending: false, verifying: false });
-  const [locationMapVisible, setLocationMapVisible] = useState(false);
 
   const [propertyCategory, setPropertyCategory] = useState("Residential");
   const [form, setForm] = useState({
@@ -113,8 +112,9 @@ export default function AddCustomerRequirement() {
     maxArea: "",
     unit: "Square Feet (Sq. ft)",
     name: "",
+    customerAddress: "",
     contact: "",
-    location: "",
+    locations: [],
     budgetMin: MIN_VALUE,
     budgetMax: 10000000,
     details: "",
@@ -147,8 +147,9 @@ export default function AddCustomerRequirement() {
         maxArea: existingReq.max_area ? String(existingReq.max_area) : "",
         unit: existingReq.area_unit || "Square Feet (Sq. ft)",
         name: existingReq.customer_name || "",
+        customerAddress: existingReq.customer_address || "",
         contact: rawContact,
-        location: existingReq.preferred_locations?.[0] || "",
+        locations: existingReq.preferred_locations || [],
         budgetMin: existingReq.budget_min || MIN_VALUE,
         budgetMax: existingReq.budget_max || 10000000,
         details: existingReq.notes || "",
@@ -295,17 +296,21 @@ export default function AddCustomerRequirement() {
       return;
     }
 
+    if (!form.locations.length) {
+      Alert.alert("Preferred locations", "Select at least one preferred location on the map.");
+      return;
+    }
     setIsSubmitting(true);
-
     const payload = {
       ...(customerOtp.verifiedToken && customerOtp.verifiedToken !== "existing" ? { verified_token: customerOtp.verifiedToken } : {}),
       customer_name: form.name.trim(),
+      customer_address: form.customerAddress.trim() || null,
       contact_number: `+91${cleanContact}`,
       requirement_type: "buy",
       property_type: form.category,
       budget_min: form.budgetMin,
       budget_max: form.budgetMax,
-      preferred_locations: form.location.trim() ? [form.location.trim()] : [],
+      preferred_locations: form.locations,
       notes: form.details.trim() || null,
       min_area: form.minArea ? Number(form.minArea) : null,
       max_area: form.maxArea ? Number(form.maxArea) : null,
@@ -516,7 +521,7 @@ export default function AddCustomerRequirement() {
             <View className="min-h-[48px] border border-gray-300 rounded-lg flex-row items-center px-3 bg-white">
               <Text style={{ color: "#17171B", fontSize: 13, marginRight: 7, fontFamily: "Lato-Regular" }}>+91</Text>
               <TextInput
-                placeholder="8120180101"
+                placeholder="eg. 7867986757"
                 placeholderTextColor="#8E8E96"
                 keyboardType="phone-pad"
                 maxLength={10}
@@ -562,27 +567,11 @@ export default function AddCustomerRequirement() {
             </View>
           </View>
 
-          {/* Preferred Location */}
-          <View className="mb-5" onLayout={(e) => handleFieldLayout("location", e)}>
-            <Text className="text-sm font-lato-bold mb-2">Preferred Location</Text>
-            <View className="min-h-[48px] border border-gray-300 rounded-lg flex-row items-center px-3 bg-white">
-              <Ionicons name="location" size={18} color="#4A43EC" />
-              <TextInput
-                placeholder="Address & Landmark"
-                placeholderTextColor="#8E8E96"
-                className="flex-1 ml-2 text-sm font-lato-regular text-[#17171B] py-2"
-                value={form.location}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, location: text }))}
-                onFocus={() => handleFocus("location")}
-              />
-              <Pressable 
-                onPress={() => { Keyboard.dismiss(); setLocationMapVisible(true); }} 
-                hitSlop={12} 
-                style={{ width: 30, height: 30, borderRadius: 7, backgroundColor: "#EEEDFD", alignItems: "center", justifyContent: "center" }}
-              >
-                <Ionicons name="map-outline" size={18} color="#4A43EC" />
-              </Pressable>
-            </View>
+          <View className="mb-5">
+            <Text className="text-sm font-lato-bold mb-2">Customer Address</Text>
+            <TextInput value={form.customerAddress} onChangeText={customerAddress => setForm(prev => ({ ...prev, customerAddress }))} placeholder="Enter customer address" multiline maxLength={2000} className="min-h-[80px] border border-gray-300 rounded-lg px-3 py-3 mb-5 text-sm" textAlignVertical="top" />
+            <Text className="text-sm font-lato-bold mb-2">Preferred Locations</Text>
+            <PreferredLocationsPicker value={form.locations} onChange={locations => setForm(prev => ({ ...prev, locations }))} />
           </View>
 
           {/* Budget Range Slider */}
@@ -717,20 +706,7 @@ export default function AddCustomerRequirement() {
         </Pressable>
       </Modal>
 
-      {/* Location Map Picker Modal */}
-      <LocationMapPicker 
-        visible={locationMapVisible} 
-        initialAddress={{ location: form.location }} 
-        onClose={() => setLocationMapVisible(false)} 
-        onConfirm={(address) => { 
-          setForm((prev) => ({ 
-            ...prev, 
-            location: address.location || [address.city, address.state].filter(Boolean).join(", ") || prev.location 
-          })); 
-          setLocationMapVisible(false); 
-        }} 
-        confirmLabel="Add this location" 
-      />
+
     </View>
   );
 }

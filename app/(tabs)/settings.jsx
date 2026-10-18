@@ -1,3 +1,4 @@
+import { pickUpload } from "../../utils/pickUpload";
 import {
   Image,
   Text,
@@ -11,7 +12,6 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
@@ -95,9 +95,8 @@ export default function Settings() {
 
   const handleChangePhoto = useCallback(async () => {
     if (changingPhoto || loading) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) { Alert.alert('Permission needed', 'Allow photo library access to change your profile image.'); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+
+    const result = await pickUpload({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
     if (result.canceled || !result.assets?.[0]) return;
     setChangingPhoto(true);
     try { await dispatch(updateProfilePicture(result.assets[0])).unwrap(); Alert.alert('Profile updated', 'Your profile image has been updated.'); }

@@ -1,3 +1,4 @@
+import { pickUpload } from "../../utils/pickUpload";
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshControl,
   ActivityIndicator,
@@ -133,6 +134,11 @@ export default function KycScreen() {
   useEffect(() => {
     loadKycStatus();
   }, [loadKycStatus]);
+
+  const pickIdentityImage = async (setter) => {
+    const result = await pickUpload({ allowsEditing: true, quality: 0.8 });
+    if (!result.canceled && result.assets?.[0]) setter(result.assets[0]);
+  };
 
   const pickImage = async (setter, useCamera = false) => {
     if (submittingRef.current) return;
@@ -332,7 +338,7 @@ export default function KycScreen() {
             value={aadharFront}
             existingUrl={remoteKyc?.aadhar_front_url}
             icon="cloud-upload-outline"
-            onPress={() => pickImage(setAadharFront)}
+            onPress={() => pickIdentityImage(setAadharFront)}
             onRemove={() => setAadharFront(null)}
           />
           <UploadBox
@@ -341,7 +347,7 @@ export default function KycScreen() {
             value={aadharBack}
             existingUrl={remoteKyc?.aadhar_back_url}
             icon="cloud-upload-outline"
-            onPress={() => pickImage(setAadharBack)}
+            onPress={() => pickIdentityImage(setAadharBack)}
             onRemove={() => setAadharBack(null)}
           />
           <UploadBox
@@ -350,7 +356,7 @@ export default function KycScreen() {
             value={panCard}
             existingUrl={remoteKyc?.pan_card_url}
             icon="card-account-details-outline"
-            onPress={() => pickImage(setPanCard)}
+            onPress={() => pickIdentityImage(setPanCard)}
             onRemove={() => setPanCard(null)}
           />
 
