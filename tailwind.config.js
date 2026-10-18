@@ -10,6 +10,9 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
+        'inter-medium': ['Inter_500Medium'],
+        'inter-semibold': ['Inter_600SemiBold'],
+        'inter-bold': ['Inter_700Bold'],
         lato: ["Lato-Regular"],
         "lato-regular": ["Lato-Regular"],
         "lato-medium": ["Lato-Regular"],

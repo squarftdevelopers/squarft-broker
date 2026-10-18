@@ -128,6 +128,9 @@ export default function AuthLayout() {
         'Manrope-Medium': Manrope_500Medium,
         'Manrope-SemiBold': Manrope_600SemiBold,
         'Manrope-Bold': Manrope_700Bold,
+        'Inter_500Medium': require('../assets/fonts/Inter_500Medium.ttf'),
+        'Inter_600SemiBold': require('../assets/fonts/Inter_600SemiBold.ttf'),
+        'Inter_700Bold': require('../assets/fonts/Inter_700Bold.ttf'),
         'Manrope-ExtraBold': Manrope_800ExtraBold,
     });
 

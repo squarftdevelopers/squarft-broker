@@ -67,6 +67,7 @@ export default function CustomerDetails() {
   const requirement = useSelector((state) => state.requirements?.currentRequirement);
   const loading = useSelector((state) => state.requirements?.loading);
   const [refreshing, setRefreshing] = useState(false);
+  const [timelineRefresh, setTimelineRefresh] = useState(0);
 
   const onRefresh = useCallback(async () => {
     if (!id) return;
@@ -75,6 +76,7 @@ export default function CustomerDetails() {
       await dispatch(fetchRequirementById(id));
     } finally {
       setRefreshing(false);
+      setTimelineRefresh(value => value + 1);
     }
   }, [id, dispatch]);
 
@@ -203,7 +205,7 @@ export default function CustomerDetails() {
           </View>
 
           {/* Timeline Section */}
-          <TabTimeline requirementId={requirement.id} />
+          <TabTimeline requirementId={requirement.id} refreshVersion={timelineRefresh} />
         </View>
       </ScrollView>
     </View>
