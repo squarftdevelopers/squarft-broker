@@ -32,7 +32,6 @@ import { notifyClientSubmitted } from "../../utils/notificationHelpers";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-const PropertyRequirements = ["Buy", "Rent/Lease", "Paying Guest"];
 
 const mainTypes = [
   {
@@ -109,7 +108,6 @@ export default function AddCustomerRequirement() {
 
   const [propertyCategory, setPropertyCategory] = useState("Residential");
   const [form, setForm] = useState({
-    status: "Buy",
     category: "Plot",
     minArea: "",
     maxArea: "",
@@ -134,25 +132,16 @@ export default function AddCustomerRequirement() {
 
   useEffect(() => {
     if (isEdit && existingReq) {
-      // Normalize requirement type for UI
-      let uiStatus = "Buy";
-      if (existingReq.requirement_type === "rent") {
-        uiStatus = "Rent/Lease";
-      } else if (existingReq.requirement_type === "paying_guest") {
-        uiStatus = "Paying Guest";
-      }
-
       // Try to determine category based on property_type
       let category = "Residential";
       if (["Shop", "Showroom", "Office"].includes(existingReq.property_type)) {
         category = "Commercial";
       }
       setPropertyCategory(category);
-      // "sell" and "buy" both map back to "Buy"
 
       const rawContact = existingReq.contact_number ? String(existingReq.contact_number).replace(/\D/g, "").slice(-10) : "";
       setForm({
-        status: uiStatus,
+
         category: existingReq.property_type || "Plot",
         minArea: existingReq.min_area ? String(existingReq.min_area) : "",
         maxArea: existingReq.max_area ? String(existingReq.max_area) : "",
@@ -308,19 +297,11 @@ export default function AddCustomerRequirement() {
 
     setIsSubmitting(true);
 
-    // Normalize requirement type for backend
-    let reqType = "buy";
-    if (form.status === "Rent/Lease") {
-      reqType = "rent";
-    } else if (form.status === "Paying Guest") {
-      reqType = "paying_guest";
-    }
-
     const payload = {
       ...(customerOtp.verifiedToken && customerOtp.verifiedToken !== "existing" ? { verified_token: customerOtp.verifiedToken } : {}),
       customer_name: form.name.trim(),
       contact_number: `+91${cleanContact}`,
-      requirement_type: reqType,
+      requirement_type: "buy",
       property_type: form.category,
       budget_min: form.budgetMin,
       budget_max: form.budgetMax,
@@ -354,19 +335,6 @@ export default function AddCustomerRequirement() {
     }
   };
 
-  const Chip = ({ label, selected, onPress }) => (
-    <Pressable
-      onPress={onPress}
-      className={`px-4 py-2 rounded-full border mr-2 mb-2 ${
-        selected ? "bg-[#EEEDFD] border-[#4A43EC]" : "bg-white border-gray-300"
-      }`}
-    >
-      <Text className={`text-[12px] font-lato-bold ${selected ? "text-[#4A43EC]" : "text-gray-500"}`}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-
   return (
     <View className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="white" />
@@ -393,19 +361,6 @@ export default function AddCustomerRequirement() {
         keyboardShouldPersistTaps="handled"
       >
         <View className="p-5">
-          {/* Property Requirements */}
-          <Text className="text-sm font-lato-bold mb-3">Property Requirements</Text>
-          <View className="flex-row flex-wrap mb-5">
-            {PropertyRequirements.map((item) => (
-              <Chip
-                key={item}
-                label={item}
-                selected={form.status === item}
-                onPress={() => setForm({ ...form, status: item })}
-              />
-            ))}
-          </View>
-
           {/* Property Category */}
           <Text className="text-sm font-lato-bold mb-3">Property Category</Text>
           <View className="flex-row justify-between mb-8">

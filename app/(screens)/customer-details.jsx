@@ -174,7 +174,6 @@ export default function CustomerDetails() {
             <Text className="text-[#4A43EC] text-sm font-lato-bold mb-3 tracking-wide">REQUIREMENTS</Text>
 
             <RequirementRow icon="currency-inr" label="Budget Range" value={`${formatCurrency(requirement.budget_min)} - ${formatCurrency(requirement.budget_max)}`} isMCI />
-            <RequirementRow icon="list-outline" label="Listing Type" value={requirement.requirement_type} />
             <RequirementRow icon="home-outline" label="Property Type" value={requirement.property_type} />
             <RequirementRow icon="location" label="Locations" value={requirement.preferred_locations?.join(', ') || "N/A"} />
           </View>

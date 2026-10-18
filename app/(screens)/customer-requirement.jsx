@@ -161,11 +161,7 @@ export default function CustomerRequirement() {
                   <Text className="text-white text-base font-lato-bold">{req.customer_name}</Text>
                   <MaterialCommunityIcons name="check-decagram" size={16} color="white" />
                 </View>
-                <View className="bg-white px-3 py-0.5 rounded-full">
-                  <Text className="text-[#4A43EC] text-[10px] font-lato-bold uppercase tracking-wider">
-                    {req.requirement_type === "sell" ? "Buy" : req.requirement_type === "buy" ? "Buy" : req.requirement_type === "rent" ? "Rent/Lease" : req.requirement_type === "paying_guest" ? "Paying Guest" : req.requirement_type}
-                  </Text>
-                </View>
+
               </LinearGradient>
 
               {/* Card Body */}
