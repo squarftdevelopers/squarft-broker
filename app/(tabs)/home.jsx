@@ -371,7 +371,7 @@ export default function Home() {
               <Image
                 key={`marketing-banner-${index}`}
                 source={banner}
-                style={{ width, height: 175 }}
+                style={{ width, height: 150 }}
                 resizeMode="cover"
               />
             ))}
