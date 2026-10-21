@@ -1,3 +1,4 @@
+import { useNotificationResponse } from "../services/useNotificationResponse";
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
@@ -15,7 +16,9 @@ export default function PushNotificationRegistrar() {
         token: state.auth.token,
     }), shallowEqual);
     const lastAttemptedTokenRef = useRef(null);
-    const lastHandledResponseRef = useRef(null);
+    useNotificationResponse((response) => {
+        router.push(resolveNotificationRoute(response.notification.request.content.data || {}));
+    });
 
     useEffect(() => {
         console.log('[PushNotificationRegistrar] Auth state changed', {
@@ -73,22 +76,6 @@ export default function PushNotificationRegistrar() {
     }, [dispatch, isLoggedIn, token]);
 
     useEffect(() => {
-        const handleNotificationTap = (response) => {
-            const data = response?.notification?.request?.content?.data || {};
-            const responseId = response?.notification?.request?.identifier;
-            if (responseId && lastHandledResponseRef.current === responseId) return;
-            lastHandledResponseRef.current = responseId;
-            const route = resolveNotificationRoute(data);
-
-            console.log('[PushNotificationRegistrar] Notification tapped', {
-                eventType: data.eventType,
-                action: data.action,
-                route,
-            });
-
-            router.push(route);
-        };
-
         const receivedSubscription = Notifications.addNotificationReceivedListener((notification) => {
             const content = notification?.request?.content || {};
             const data = content.data || {};
@@ -110,24 +97,8 @@ export default function PushNotificationRegistrar() {
             dispatch(fetchNotifications());
         });
 
-        const responseSubscription = Notifications.addNotificationResponseReceivedListener(handleNotificationTap);
-
-        // 🔧 FIX: Don't handle last notification response on app reload
-        // This was causing notification routes to flash before splash screen
-        // Only active tap gestures should trigger navigation
-        // Notifications.getLastNotificationResponseAsync()
-        //     .then((response) => {
-        //         if (response) handleNotificationTap(response);
-        //     })
-        //     .catch((err) => {
-        //         console.log('[PushNotificationRegistrar] Last notification response unavailable', {
-        //             message: err?.message || String(err),
-        //         });
-        //     });
-
         return () => {
             receivedSubscription.remove();
-            responseSubscription.remove();
         };
     }, [dispatch, router]);
 

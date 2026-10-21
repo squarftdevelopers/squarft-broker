@@ -115,7 +115,7 @@ function SessionExpiryGuard() {
 export default function AuthLayout() {
     const colorScheme = useColorScheme();
     const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
-    const [fontsLoaded] = useFonts({
+    const [fontsLoaded, fontError] = useFonts({
         'Lato-Regular': Lato_400Regular,
         'Lato-Bold': Lato_700Bold,
         'Lato-Light': Lato_300Light,
@@ -141,7 +141,7 @@ export default function AuthLayout() {
     }, [colorScheme]);
 
     useEffect(() => {
-        if (fontsLoaded) {
+        if (fontsLoaded || fontError) {
             const timer = setTimeout(() => {
                 SplashScreen.hideAsync().catch((err) => {
                 console.warn("SplashScreen.hideAsync error:", err);
@@ -149,9 +149,9 @@ export default function AuthLayout() {
             }, 180);
             return () => clearTimeout(timer);
         }
-    }, [fontsLoaded]);
+    }, [fontsLoaded, fontError]);
 
-    if (!fontsLoaded) return null;
+    if (!fontsLoaded && !fontError) return null;
 
     return (
         <Provider store={store}>
