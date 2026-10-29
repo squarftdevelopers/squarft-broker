@@ -303,6 +303,7 @@ const getActiveDealId = (variant) => {
 
 export default function ProjectDetailModal({ visible, onClose, project, variant, onVariantUpdate, showDealSummary = false, showFollowUps = false }) {
     const sheetRef = useRef(null);
+    const insets = useSafeAreaInsets();
     const [sheetView, setSheetView] = useState("property");
     const [isImageLightboxVisible, setIsImageLightboxVisible] = useState(false);
     const [paymentPlan, setPaymentPlan] = useState(() => buildPaymentPlan(variant));
@@ -630,8 +631,6 @@ export default function ProjectDetailModal({ visible, onClose, project, variant,
         },
     };
 
-    const insets = useSafeAreaInsets();
-
     return (
         <BottomSheetModal
             ref={sheetRef}
@@ -954,7 +953,7 @@ export default function ProjectDetailModal({ visible, onClose, project, variant,
                     </View>
                 )}
 
-                <View className="px-5 pt-3 border-t border-gray-100 mt-1" style={{ paddingBottom: Math.max(insets.bottom, 8) }}>
+                <View className="px-5 pt-3 border-t border-gray-100 mt-1" style={{ paddingBottom: 8 }}>
                     {sheetView === "property" ? (
                         <TouchableOpacity
                             onPress={onClose}

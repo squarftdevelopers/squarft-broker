@@ -394,6 +394,7 @@ export default function PropertyDetailSheet({
           </View>
         )}
         backgroundStyle={{ borderRadius: 28 }}
+        bottomInset={insets.bottom}
       >
         <View style={{ flex: 1 }}>
           {activeTab === "followup" && (
@@ -727,7 +728,7 @@ export default function PropertyDetailSheet({
           )}
 
           {/* Footer Tabs */}
-          <View className="px-5 pt-3 flex-row gap-3 border-t border-gray-100 bg-white" style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingBottom: Math.max(insets.bottom, 16), elevation: 8, shadowColor: "#101828", shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: -3 } }}>
+          <View className="px-5 pt-3 flex-row gap-3 border-t border-gray-100 bg-white" style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingBottom: 16, elevation: 8, shadowColor: "#101828", shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: -3 } }}>
             <TouchableOpacity
               onPress={() => setActiveTab("detail")}
               className="flex-1 rounded-2xl py-4 items-center justify-center"

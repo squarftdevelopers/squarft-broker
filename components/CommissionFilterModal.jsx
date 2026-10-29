@@ -158,7 +158,7 @@ const CommissionFilterModal = ({ visible, onClose, onApplyFilters, initialStatus
                     borderTopColor: '#E5E7EB',
                     paddingHorizontal: 20,
                     paddingTop: 16,
-                    paddingBottom: Math.max(insets.bottom, 16),
+                    paddingBottom: 16,
                     flexDirection: 'row',
                     gap: 12,
                 }}>

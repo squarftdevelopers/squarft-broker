@@ -4,6 +4,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchTransactions } from '../../store/slices/walletSlice';
 
@@ -16,6 +17,7 @@ const formatDate = (dateStr) => {
 };
 
 const TransactionsScreen = () => {
+    const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
     const router = useRouter();
     const bottomSheetModalRef = useRef(null);
@@ -144,6 +146,7 @@ const TransactionsScreen = () => {
                 index={0}
                 snapPoints={snapPoints}
                 backdropComponent={renderBackdrop}
+                bottomInset={insets.bottom}
                 handleIndicatorStyle={{ backgroundColor: '#E1E1E1', width: 40 }}
                 style={{
                     shadowColor: "#000",

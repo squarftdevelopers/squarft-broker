@@ -154,6 +154,7 @@ const FilterModal = ({ visible, onClose, onApplyFilters, initialFilters = null }
             enablePanDownToClose={true}
             enableDynamicSizing={false}
             handleIndicatorStyle={{ backgroundColor: '#D1D5DB', width: 40 }}
+            bottomInset={insets.bottom}
         >
             {/* FIXED: Changed layout element container into a clean flex column alignment base */}
             <BottomSheetView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
@@ -359,7 +360,7 @@ const FilterModal = ({ visible, onClose, onApplyFilters, initialFilters = null }
                     borderTopColor: '#E5E7EB',
                     paddingHorizontal: 20,
                     paddingTop: 16,
-                    paddingBottom: Math.max(insets.bottom, 12),
+                    paddingBottom: 16,
                     flexDirection: 'row',
                     gap: 12,
                 }}>

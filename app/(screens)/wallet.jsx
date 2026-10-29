@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchWalletOverview, fetchBankAccounts, fetchTransactions, requestWithdrawalApi } from '../../store/slices/walletSlice';
 import * as Clipboard from 'expo-clipboard';
 
@@ -36,6 +37,7 @@ const formatDate = (dateStr) => {
 };
 
 const WalletScreen = () => {
+    const insets = useSafeAreaInsets();
     const router = useRouter();
     const { withdraw } = useLocalSearchParams();
     const dispatch = useDispatch();
@@ -370,6 +372,7 @@ const WalletScreen = () => {
                 index={0}
                 snapPoints={snapPoints}
                 backdropComponent={renderBackdrop}
+                bottomInset={insets.bottom}
                 handleIndicatorStyle={{ backgroundColor: '#E1E1E1', width: 40 }}
                 style={{
                     shadowColor: "#000",
