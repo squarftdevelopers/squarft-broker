@@ -1,66 +1,72 @@
-const fs = require("node:fs");
-const path = require("node:path");
+
+require("dotenv").config();
 
 const appJson = require("./app.json");
-const projectRoot = path.dirname(require.resolve("./app.json"));
 
-const readDotEnvValue = (key) => {
-  const envPath = path.join(projectRoot, ".env");
-  if (!fs.existsSync(envPath)) return undefined;
+module.exports = ({ config }) => {
+  const baseConfig = appJson.expo;
 
-  const line = fs
-    .readFileSync(envPath, "utf8")
-    .split(/\r?\n/)
-    .find((entry) => entry.trim().startsWith(`${key}=`));
+  const androidGoogleMapsApiKey =
+    process.env.GOOGLE_MAPS_ANDROID_API_KEY ||
+    process.env.GOOGLE_MAPS_API_KEY ||
+    "";
 
-  if (!line) return undefined;
+  const iosGoogleMapsApiKey =
+    process.env.GOOGLE_MAPS_IOS_API_KEY ||
+    process.env.GOOGLE_MAPS_API_KEY ||
+    "";
 
-  return line.split("=").slice(1).join("=").trim().replace(/^['"]|['"]$/g, "");
-};
+  // Keep this only if your JavaScript location picker needs the key.
+  const placesApiKey =
+    process.env.GOOGLE_MAPS_PLACES_API_KEY ||
+    process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+    process.env.GOOGLE_MAPS_API_KEY ||
+    "";
 
-const nativeGoogleMapsKey =
-  process.env.GOOGLE_MAPS_API_KEY ||
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-  readDotEnvValue("GOOGLE_MAPS_API_KEY") ||
-  readDotEnvValue("EXPO_PUBLIC_GOOGLE_MAPS_API_KEY");
+  return {
+    ...config,
+    ...baseConfig,
 
-if (!nativeGoogleMapsKey) {
-  throw new Error(
-    "Google Maps API key is missing. Set GOOGLE_MAPS_API_KEY or EXPO_PUBLIC_GOOGLE_MAPS_API_KEY before building the app."
-  );
-}
+    extra: {
+      ...config.extra,
+      ...baseConfig.extra,
 
-module.exports = {
-  ...appJson.expo,
-  extra: {
-    ...appJson.expo.extra,
-    // The JavaScript location picker uses this to decide whether Google
-    // Places/Geocoding is available. The Android SDK receives the same key
-    // below during the native build.
-    googleMapsApiKey: nativeGoogleMapsKey,
-    "eas": {
-      "projectId": "11360005-bb4e-452d-9196-4731e5578fc4"
+      ...(placesApiKey
+        ? { googleMapsApiKey: placesApiKey }
+        : {}),
     },
-  },
-  ios: {
-    ...appJson.expo.ios,
-    config: {
-      ...appJson.expo.ios?.config,
-      googleMapsApiKey: nativeGoogleMapsKey,
+
+    ios: {
+      ...config.ios,
+      ...baseConfig.ios,
+
+      config: {
+        ...config.ios?.config,
+        ...baseConfig.ios?.config,
+
+        ...(iosGoogleMapsApiKey
+          ? { googleMapsApiKey: iosGoogleMapsApiKey }
+          : {}),
+      },
     },
-  },
-  android: {
-    ...appJson.expo.android,
-    config: {
-      ...appJson.expo.android?.config,
-      googleMaps: { apiKey: nativeGoogleMapsKey },
+
+    android: {
+      ...config.android,
+      ...baseConfig.android,
+
+      config: {
+        ...config.android?.config,
+        ...baseConfig.android?.config,
+
+        ...(androidGoogleMapsApiKey
+          ? {
+              googleMaps: {
+                ...baseConfig.android?.config?.googleMaps,
+                apiKey: androidGoogleMapsApiKey,
+              },
+            }
+          : {}),
+      },
     },
-  },
-  updates: {
-    ...appJson.expo.updates,
-    url: "https://u.expo.dev/11360005-bb4e-452d-9196-4731e5578fc4",
-  },
-  runtimeVersion: {
-    policy: "appVersion",
-  },
+  };
 };
